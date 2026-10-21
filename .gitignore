@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+# données personnelles : jamais dans le dépôt
+*.wav
+*.sqlite
+*.bin
+*.log
+*.jsonl
+meta.json
+config.json
+memoire*.json
+resultats*.json

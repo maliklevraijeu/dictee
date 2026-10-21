@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - run: python -m pip install --disable-pip-version-check .
+      - name: tests
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python tests/test_nettoyage.py
+          python tests/test_raccourci.py
+          python tests/test_apprentissage.py
+          python tests/test_memoire.py
+          python -c "import dictee.app, dictee.fenetre_memoire, dictee.accueil, dictee.coffre"

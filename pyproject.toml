@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dictee"
+version = "0.1.0"
+description = "Dictée vocale pour Windows : maintiens Ctrl+Win, parle, relâche, le texte se colle là où tu écris."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    "websockets>=14",
+    "sounddevice>=0.4",
+    "numpy>=1.26",
+    "pystray>=0.19",
+    "pillow>=10",
+    "comtypes>=1.4",
+]
+classifiers = [
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+
+[project.urls]
+Source = "https://github.com/maliklevraijeu/dictee"
+
+[project.scripts]
+dictee = "dictee.__main__:main"
+
+[tool.setuptools]
+packages = ["dictee"]
