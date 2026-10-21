@@ -16,7 +16,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 
-from . import demarrage, historique, sons
+from . import demarrage, ecran, historique, sons
 from .apprentissage import Veilleur
 from .audio import Micro, lister_micros
 from .coller import coller, copier_selection, mettre_texte, titre_fenetre_active
@@ -182,6 +182,10 @@ class App:
             self.racc.reinitialiser()
             self.pilule.message(t("micro_introuvable", erreur=e)[:60], 3000, erreur=True)
             return
+        # les noms affichés dans la fenêtre (un prénom dans un mail, une marque dans la page) : lus pendant
+        # que tu parles, ils rejoignent les mots de CETTE dictée
+        if self.cfg.contexte_ecran and hasattr(self.session, "ajouter_mots"):
+            ecran.en_fond(self.session.ajouter_mots)
         if self.cfg.sons:
             sons.jouer(sons.DEBUT)
         self.pilule.ecoute()

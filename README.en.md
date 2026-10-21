@@ -2,16 +2,16 @@
 
 [Version française](README.md)
 
-Hold Ctrl+Win, speak, release, and your text is pasted wherever you are typing, in any Windows app.
+Hold Ctrl+Win, speak, release, and your text is pasted wherever you are typing, in almost any Windows app.
 
-I used Wispr Flow, a paid dictation app, all day long, and I didn't want to keep paying a monthly subscription for a tool I can run myself. Dictée transcribes with ElevenLabs' most accurate model, and a long dictation is sent in pieces while you speak. On 40 of my own dictations, the text arrives about 0.6 seconds after a short dictation and 1 second after a long one.
+I used Wispr Flow, a dictation app I paid for, all day long, and I didn't want to keep paying a monthly subscription for a tool I can run myself. Dictée transcribes with Scribe v2, the ElevenLabs model that made the fewest mistakes in my tests, and a long dictation is sent in pieces while you speak. On 40 of my own dictations, the text arrives about 0.6 seconds after a short dictation and 1 to 1.5 seconds after a long one.
 
 ## Install
 
 You need Windows 10 or 11 and an internet connection. Press the Windows key, type "PowerShell", open it, then paste this line with a right click and press Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.4.0/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.5.0/installer.ps1 | iex
 ```
 
 The script installs Python for your account if it is missing, without admin rights, then installs Dictée in your user folder and starts it with Windows. You can read [installer.ps1](installer.ps1) before running it. If the script says it can't install Python, install it from python.org first, ticking "Add python.exe to PATH", then run the line again.
@@ -40,7 +40,7 @@ Headphones with a microphone, wired or Bluetooth (AirPods included), work as the
 
 In the same menu, "Dictate from your phone" shows a QR code that you scan with your camera. Click on the PC where you want to write, then on the phone tap the text box, the keyboard's microphone, speak, and tap "Send to PC". Your phone does the transcription for free, and Dictée then applies the corrections it has learned. If the microphone doesn't show on the iPhone keyboard, go to Settings, General, Keyboard, and turn on dictation.
 
-Your PC and your phone need to be on the same Wi-Fi. The first time, Windows asks whether Dictée may make changes to the device: answer "Yes", which opens your PC to the devices on your Wi-Fi only. The text never goes through the internet, and the secret code in the QR code stops other devices from typing on your PC.
+Your PC and your phone need to be on the same Wi-Fi. The first time, Windows asks whether Dictée may make changes to the device: answer "Yes", which opens your PC to the devices on your Wi-Fi only. The text goes from your phone to your PC over your Wi-Fi only, and the secret code in the QR code stops other devices from typing on your PC.
 
 ## It learns your words
 
@@ -48,7 +48,9 @@ To teach it a name right away, a brand for example, open "Your memory" and type 
 
 When you fix a word right after a dictation, Dictée notices. If it wrote "Kanvas" and you replace it with "Canva", the right word enters your vocabulary, and after the 2nd identical fix it makes the replacement on its own. To see it, it reads the field you are typing in for 45 seconds at most, through the Windows accessibility features, and never a password field.
 
-It doesn't learn grammar fixes, like "petit" turned into "petite", or a sentence you dictate again over the first one, because those aren't hearing mistakes. Your words rank themselves, the ones you say most and most recently first, because ElevenLabs' live transcription accepts only 50 per dictation. Everything it learned can be read and fixed in "Your memory", which opens with a click on the icon.
+It doesn't learn grammar fixes, like "petit" turned into "petite", or a sentence you dictate again over the first one, because those aren't hearing mistakes, and never more than 4 words per dictation. Your words rank themselves, the ones you say most and most recently first, because the engine receives only 50 per dictation. Everything it learned can be read and fixed in "Your memory", which opens with a click on the icon.
+
+When you press the keys, Dictée also reads the names shown in the window you are typing in, like the first name of the person you are replying to or a brand on the page. They go first in the engine's word list for that dictation only, nothing is kept, and `"contexte_ecran": false` in the settings turns this off.
 
 ## What it does with your voice
 
@@ -67,7 +69,7 @@ Dictée is free, and only the transcription may cost something. Gemini has a fre
 ## If something goes wrong
 
 - Windows stops other apps from typing into an app run as administrator. Dictée then puts the text in the clipboard and tells you to press Ctrl+V.
-- If the live connection drops, your dictation is sent again in one piece to ElevenLabs, then to Gemini if that fails too. If everything fails, it stays in the history with its audio.
+- If ElevenLabs doesn't answer, your dictation goes to Gemini. If that fails too, it stays in the history with its audio.
 - Settings are in `%APPDATA%\Dictee\config.json`, and the icon menu opens that file. Errors are written to `erreurs.log` in the same folder.
 
 This is a personal project, shared as is and without warranty, under the MIT license. You can report a problem in the repository's issues, with no promised response time.
@@ -80,7 +82,7 @@ Quit Dictée from the icon menu, unticking "Start with Windows" just before. The
 
 I took 40 of my real dictations, from a few seconds to 3 and a half minutes. The same code as the app replays them at speaking speed and times the gap between the end of speech and the final text: about 0.6 seconds for a dictation under 8 seconds, 0.9 seconds up to 15 seconds, and 1.1 to 1.4 seconds beyond.
 
-I also compared the words. Dictée's first engine, live streaming, differed from Wispr's text on 11% of the words, and I could read meaning errors in it. The current engine differs on only 7% of the words, and most of these gaps are plain variants ("t'en" or "tu en"). The live engine is still available with `"moteur": "rapide"` in the settings, for 0.2 seconds.
+I also compared the words. Dictée's first engine, live streaming, differed from Wispr's text on 11% of the words, and I could read meaning errors in it. The current engine differs on only 7% of the words, and most of these gaps are plain variants ("t'en" or "tu en"). The live engine is still available with `"moteur": "rapide"` in the settings: the text arrives in about 0.2 seconds, with more word errors.
 
 Wispr Flow records its own delay for each dictation in its history, on the PC (the `e2eLatency` field of its local database), and for these 40 dictations its median is 0.59 seconds, from 0.4 seconds on short dictations to 1 second on long ones. The two clocks may not start at exactly the same moment, so read the gap as an order of magnitude, measured on one PC and one connection. To time Dictée on your own 16 kHz mono WAV recordings, there is `python -m dictee essai file.wav`.
 

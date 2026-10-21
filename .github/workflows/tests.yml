@@ -21,12 +21,10 @@ jobs:
         env:
           PYTHONIOENCODING: utf-8
         run: |
-          python tests/test_nettoyage.py
-          python tests/test_raccourci.py
-          python tests/test_apprentissage.py
-          python tests/test_memoire.py
-          python tests/test_telephone.py
-          python tests/test_langues.py
-          python tests/test_coller.py
-          python tests/test_precis.py
-          python -c "import dictee.app, dictee.fenetre_memoire, dictee.fenetre_telephone, dictee.accueil, dictee.coffre"
+          # tous les fichiers test_*.py : un nouveau test n'est jamais oublié
+          foreach ($t in Get-ChildItem tests/test_*.py) {
+            Write-Output "== $($t.Name)"
+            python $t.FullName
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          python -c "import dictee.app, dictee.ecran, dictee.fenetre_memoire, dictee.fenetre_telephone, dictee.accueil, dictee.coffre"

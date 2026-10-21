@@ -2,16 +2,16 @@
 
 [English version](README.en.md)
 
-Tu maintiens Ctrl+Win, tu parles, tu relâches, et ton texte se colle là où tu écris, dans n'importe quelle appli Windows.
+Tu maintiens Ctrl+Win, tu parles, tu relâches, et ton texte se colle là où tu écris, dans presque toutes les applis Windows.
 
-J'utilisais Wispr Flow, une appli de dictée payante, toute la journée, et je ne voulais plus payer un abonnement chaque mois pour un outil que je peux faire tourner moi-même. Dictée transcrit avec le modèle le plus juste d'ElevenLabs, et une longue dictée part par morceaux pendant que tu parles. Sur 40 de mes dictées, le texte arrive environ 0,6 seconde après une dictée courte et 1 seconde après une dictée longue.
+J'utilisais Wispr Flow, une appli de dictée que je payais, toute la journée, et je ne voulais plus payer un abonnement chaque mois pour un outil que je peux faire tourner moi-même. Dictée transcrit avec Scribe v2, le modèle d'ElevenLabs qui a fait le moins d'erreurs dans mes essais, et une longue dictée part par morceaux pendant que tu parles. Sur 40 de mes dictées, le texte arrive environ 0,6 seconde après une dictée courte et 1 à 1,5 seconde après une dictée longue.
 
 ## Installer
 
 Il faut Windows 10 ou 11 et une connexion internet. Appuie sur la touche Windows, tape « PowerShell », ouvre-le, puis colle cette ligne avec un clic droit et appuie sur Entrée :
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.4.0/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.5.0/installer.ps1 | iex
 ```
 
 Le script installe Python pour ton compte s'il manque, sans droits administrateur, puis Dictée dans ton dossier utilisateur, et il la lance avec Windows. Tu peux lire [installer.ps1](installer.ps1) avant de le lancer. Si le script dit qu'il n'arrive pas à installer Python, installe-le d'abord depuis python.org en cochant « Add python.exe to PATH », puis relance la ligne.
@@ -38,7 +38,7 @@ Des écouteurs avec micro, en jack ou en Bluetooth (AirPods compris), marchent t
 
 Dans le même menu, « Dicter depuis le téléphone » affiche un QR code, que tu scannes avec l'appareil photo. Clique sur le PC là où tu veux écrire, puis, sur le téléphone, touche la zone de texte, le micro du clavier, parle, et touche « Envoyer au PC ». C'est ton téléphone qui transcrit, gratuitement, et Dictée repasse ensuite sur le texte avec les corrections qu'elle a apprises. Si le micro n'apparaît pas sur le clavier de l'iPhone, va dans Réglages, Général, Clavier, et active la dictée.
 
-Il faut que ton PC et ton téléphone soient sur le même Wi-Fi. La première fois, Windows demande si Dictée peut modifier l'appareil : réponds « Oui », c'est ce qui ouvre ton PC aux seuls appareils de ton Wi-Fi. Le texte ne passe jamais par internet, et le code secret du QR code empêche les autres appareils d'écrire sur ton PC.
+Il faut que ton PC et ton téléphone soient sur le même Wi-Fi. La première fois, Windows demande si Dictée peut modifier l'appareil : réponds « Oui », c'est ce qui ouvre ton PC aux seuls appareils de ton Wi-Fi. Le texte va de ton téléphone à ton PC par ton Wi-Fi seulement, et le code secret du QR code empêche les autres appareils d'écrire sur ton PC.
 
 ## Elle apprend tes mots
 
@@ -46,7 +46,9 @@ Pour lui apprendre un nom tout de suite, une marque par exemple, ouvre « Ta mé
 
 Quand tu corriges un mot juste après une dictée, Dictée le remarque. Si elle a écrit « Kanvas » et que tu remplaces par « Canva », le bon mot entre dans ton vocabulaire, et à la 2e correction identique elle fait le remplacement d'elle-même. Pour le voir, elle relit le champ où tu écris pendant 45 secondes au plus, avec les fonctions d'accessibilité de Windows, et jamais un champ de mot de passe.
 
-Elle ne retient pas les accords que tu corriges, comme « petit » devenu « petite », ni une phrase que tu redictes par-dessus, parce que ce ne sont pas des erreurs d'écoute. Tes mots se classent tout seuls, ceux que tu dis le plus et le plus récemment passant devant, parce que le direct d'ElevenLabs n'en accepte que 50 par dictée. Tout ce qu'elle a appris se relit et se corrige dans « Ta mémoire », qui s'ouvre d'un clic sur l'icône.
+Elle ne retient pas les accords que tu corriges, comme « petit » devenu « petite », ni une phrase que tu redictes par-dessus, parce que ce ne sont pas des erreurs d'écoute, et pas plus de 4 mots par dictée. Tes mots se classent tout seuls, ceux que tu dis le plus et le plus récemment passant devant, parce que le moteur n'en reçoit que 50 par dictée. Tout ce qu'elle a appris se relit et se corrige dans « Ta mémoire », qui s'ouvre d'un clic sur l'icône.
+
+Au moment où tu appuies, Dictée lit aussi les noms affichés dans la fenêtre où tu écris, comme le prénom de la personne à qui tu réponds ou une marque dans la page. Ils passent en tête des mots du moteur pour cette dictée seulement, rien n'est gardé, et `"contexte_ecran": false` dans les réglages coupe cette lecture.
 
 ## Ce qu'elle fait de ta voix
 
@@ -65,7 +67,7 @@ Dictée est gratuite, et seule la transcription peut coûter quelque chose. Gemi
 ## Si quelque chose coince
 
 - Windows empêche les autres applis d'écrire dans une appli lancée en administrateur. Dictée met alors le texte dans le presse-papiers et te dit de faire Ctrl+V.
-- Si la connexion en direct coupe, ta dictée est renvoyée en entier chez ElevenLabs, puis chez Gemini si ça échoue encore. Si tout échoue, elle reste dans l'historique avec son audio.
+- Si ElevenLabs ne répond pas, ta dictée part chez Gemini. Si ça échoue encore, elle reste dans l'historique avec son audio.
 - Les réglages sont dans `%APPDATA%\Dictee\config.json`, et le menu de l'icône ouvre ce fichier. Une erreur est notée dans `erreurs.log`, dans le même dossier.
 
 C'est un projet personnel, partagé tel quel et sans garantie, sous licence MIT. Tu peux signaler un problème dans les issues du dépôt, sans délai de réponse promis.
@@ -78,7 +80,7 @@ Quitte Dictée depuis le menu de l'icône et décoche « Lancer avec Windows » 
 
 J'ai pris 40 de mes vraies dictées, de quelques secondes à 3 minutes et demie. Le même code que l'application les rejoue au rythme de la parole et chronomètre le temps entre la fin de la parole et le texte final : environ 0,6 seconde pour une dictée de moins de 8 secondes, 0,9 seconde jusqu'à 15 secondes, et 1,1 à 1,4 seconde au-delà.
 
-J'ai aussi comparé les mots. Le premier moteur de Dictée, en direct, s'écartait du texte de Wispr sur 11 % des mots, et je lisais des erreurs de sens (« Célium » pour « sélénium », « Lefrage » pour « levraijeu »). Le moteur actuel ne s'en écarte plus que sur 7 % des mots, et la plupart de ces écarts sont de simples variantes (« t'en » ou « tu en »). Le moteur direct reste disponible avec `"moteur": "rapide"` dans les réglages, pour 0,2 seconde.
+J'ai aussi comparé les mots. Le premier moteur de Dictée, en direct, s'écartait du texte de Wispr sur 11 % des mots, et je lisais des erreurs de sens (« Célium » pour « sélénium », « Lefrage » pour « levraijeu »). Le moteur actuel ne s'en écarte plus que sur 7 % des mots, et la plupart de ces écarts sont de simples variantes (« t'en » ou « tu en »). Le moteur direct reste disponible avec `"moteur": "rapide"` dans les réglages : le texte arrive en 0,2 seconde environ, avec plus de mots mal entendus.
 
 Wispr Flow note lui-même un délai pour chaque dictée dans son historique, sur le PC (le champ `e2eLatency` de sa base locale), et pour ces 40 dictées sa médiane est de 0,59 seconde, de 0,4 seconde sur les dictées courtes à 1 seconde sur les longues. Les deux chronos ne partent peut-être pas exactement du même instant, donc lis l'écart comme un ordre de grandeur, mesuré sur un seul PC et une seule connexion. Pour chronométrer Dictée sur tes propres enregistrements en WAV 16 kHz mono, il y a `python -m dictee essai fichier.wav`.
 

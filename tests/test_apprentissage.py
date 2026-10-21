@@ -33,6 +33,18 @@ def test_rien_a_apprendre():
     assert corrections("une longue phrase dictée ici", "tout autre chose sans rapport") == []
 
 
+def test_quatre_mots_au_plus_par_dictee():
+    # un texte retravaillé en entier n'est pas une série de fautes d'écoute : 4 mots au plus, les noms d'abord
+    colle = ("pour la boutique on utilise kanvas pour les visuels, shopifi pour le site, klavio pour les mails, "
+             "trelo pour les tâches, notiom pour les notes et Figmma pour les maquettes de la semaine")
+    final = ("pour la boutique on utilise Canva pour les visuels, Shopify pour le site, klaviyo pour les mails, "
+             "Trello pour les tâches, Notion pour les notes et Figma pour les maquettes de la semaine")
+    c = corrections(colle, final)
+    assert len(c) == 4, c
+    # les noms propres (majuscule) passent avant les mots en minuscules
+    assert ("klavio", "klaviyo") not in c, c
+
+
 def test_faute_de_frappe_pas_apprise():
     # une lettre tapée par accident devant le mot dicté
     assert corrections("Parle-toi, il est en nuage", "wParle-toi, il est en nuage") == []

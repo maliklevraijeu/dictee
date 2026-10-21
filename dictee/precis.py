@@ -27,6 +27,7 @@ PAUSE_MS = 700  # silence qui ferme un morceau (une vraie fin de phrase, pas une
 MORCEAU_MIN_MS = 20000  # en dessous de 20 s, un seul envoi au relâchement : le modèle garde tout le contexte
 MORCEAU_MAX_MS = 45000  # au-delà, on coupe au moment le plus calme
 BLOC_MS = 50
+MAX_MOTS = 50  # mesuré le 21/10 sur 40 dictées : 100 ou 200 mots ne retrouvent pas plus de mots que 50
 
 
 def _rms(pcm: bytes) -> float:
@@ -119,6 +120,13 @@ class SessionPrecise:
         pool.submit(client.chauffer)  # la connexion s'ouvre pendant que tu commences à parler
 
     # --- côté application -------------------------------------------------
+    def ajouter_mots(self, mots: list[str]) -> None:
+        """Des noms lus à l'écran (ecran.py) : en tête de la liste, pour les morceaux pas encore partis."""
+        from .moteur import _mots_bloc
+
+        with self._verrou:
+            self.mots = _mots_bloc(list(mots) + self.mots)[:MAX_MOTS]
+
     def pousser(self, morceau: bytes) -> None:
         with self._verrou:
             self.pcm.extend(morceau)

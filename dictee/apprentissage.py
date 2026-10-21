@@ -22,6 +22,7 @@ from typing import Callable
 from .mots_courants import courant
 
 _MOT = re.compile(r"[\w'’@.-]*\w")
+MAX_PAR_DICTEE = 4
 
 
 def _mots(t: str) -> list[str]:
@@ -106,7 +107,10 @@ def corrections(colle: str, final: str) -> list[tuple[str, str]]:
         if 0 < len(ecrit) - len(entendu) <= 2 and (ecrit.endswith(entendu) or ecrit.startswith(entendu)):
             continue
         sortie.append((entendu, ecrit))
-    return sortie
+    # 4 au plus par dictée, les noms (majuscule) d'abord : au-delà, c'est un texte retravaillé, pas une
+    # série de fautes d'écoute (Wispr Flow applique le même plafond, vu dans son code le 21/10)
+    sortie.sort(key=lambda c: not c[1][:1].isupper())
+    return sortie[:MAX_PAR_DICTEE]
 
 
 def present(colle: str, texte: str) -> bool:

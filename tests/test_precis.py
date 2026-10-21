@@ -65,4 +65,26 @@ for i in range(0, len(b := son(6, True) + son(1, False) + son(4, True)), 1600):
     s2.pousser(b[i:i + 1600])
 assert client2.morceaux == []
 assert s2.terminer().texte == "morceau1"
+
+
+# les noms lus à l'écran pendant la dictée passent en tête des mots envoyés, sans dépasser 50
+class ClientQuiNote(FauxClient):
+    def transcrire(self, pcm, langue, mots):
+        self.mots = list(mots)
+        return "texte"
+
+
+class MoteurPlein(FauxMoteur):
+    def mots_fichier(self):
+        return [f"Mot{i}" for i in range(50)]
+
+
+client3 = ClientQuiNote()
+s3 = SessionPrecise(MoteurPlein(), client3, ThreadPoolExecutor(2))
+s3.ajouter_mots(["Khalil", "Mot3"])
+for i in range(0, len(b := son(3, True)), 1600):
+    s3.pousser(b[i:i + 1600])
+s3.terminer()
+assert client3.mots[:2] == ["Khalil", "Mot3"] and len(client3.mots) == 50, client3.mots[:5]
+assert client3.mots.count("Mot3") == 1
 print("ok")

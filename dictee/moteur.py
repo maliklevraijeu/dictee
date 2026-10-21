@@ -99,9 +99,12 @@ class Moteur:
         return Session(self)
 
     def mots_fichier(self) -> list[str]:
-        # 50 au plus, comme en direct : une liste trop longue fait entendre des noms qui n'ont pas été dits
-        # (mesuré le 21/10 : « semaine dernière » devenu « Smile It's Sunnah » avec 100 mots)
-        return _mots_bloc(self.mots)[:50]
+        # 50 au plus, comme en direct. Wispr Flow en envoie 200 ; mesuré le 21/10 sur 40 dictées avec ce
+        # modèle : 50, 100 et 200 mots donnent le même écart (10,9 / 11,1 / 11,2 %) et les mêmes noms
+        # retrouvés, et au-delà de 100 Scribe facture 20 s minimum par dictée.
+        from .precis import MAX_MOTS
+
+        return _mots_bloc(self.mots)[:MAX_MOTS]
 
     def url_direct(self) -> str:
         p = [("model_id", "scribe_v2_realtime"), ("audio_format", "pcm_16000"), ("language_code", self.langue)]

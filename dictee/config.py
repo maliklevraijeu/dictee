@@ -55,6 +55,9 @@ class Config:
     memoriser: str = "alt+shift+m"
     # Apprendre des corrections que tu fais juste après un collage (voir apprentissage.py).
     apprendre: bool = True
+    # À l'appui, lire les noms visibles dans la fenêtre active pour les reconnaître (voir ecran.py). Rien
+    # n'est gardé ; jamais un champ de mot de passe. Mode « precis » seulement.
+    contexte_ecran: bool = True
     # Dicter depuis le téléphone (page sur le Wi-Fi local, voir telephone.py). Allumé depuis l'icône.
     telephone: bool = False
     sons: bool = True
