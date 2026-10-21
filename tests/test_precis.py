@@ -87,4 +87,19 @@ for i in range(0, len(b := son(3, True)), 1600):
 s3.terminer()
 assert client3.mots[:2] == ["Khalil", "Mot3"] and len(client3.mots) == 50, client3.mots[:5]
 assert client3.mots.count("Mot3") == 1
+
+# réglage mots_max : 50 par défaut, jusqu'à 200 si on le demande (noms de l'écran compris)
+from dictee.moteur import Moteur  # noqa: E402
+
+m = Moteur("x", mots=[f"Nom{i}" for i in range(250)])
+assert len(m.mots_fichier()) == 50
+m.mots_max = 200
+assert len(m.mots_fichier()) == 200
+client4 = ClientQuiNote()
+s4 = SessionPrecise(m, client4, ThreadPoolExecutor(2))
+s4.ajouter_mots(["Khalil"])
+for i in range(0, len(b := son(3, True)), 1600):
+    s4.pousser(b[i:i + 1600])
+s4.terminer()
+assert client4.mots[0] == "Khalil" and len(client4.mots) == 200, (client4.mots[:3], len(client4.mots))
 print("ok")

@@ -50,14 +50,14 @@ def _mots_direct(mots: list[str]) -> list[str]:
     return out[:50]
 
 
-def _mots_bloc(mots: list[str]) -> list[str]:
+def _mots_bloc(mots: list[str], n: int = 100) -> list[str]:
     # En bloc : jusqu'à 1 000, mais au-delà de 100 Scribe facture 20 s minimum par dictée.
     out = []
     for m in mots:
         m = m.strip()
         if m and len(m) < 50 and len(m.split()) <= 5 and not any(c in m for c in "<>{}[]\\") and m not in out:
             out.append(m)
-    return out[:100]
+    return out[:n]
 
 
 class Moteur:
@@ -83,6 +83,7 @@ class Moteur:
 
     # "precis" : modèle fichier découpé aux pauses (precis.py, le plus juste) ; "rapide" : le direct.
     mode: str = "precis"
+    mots_max: int = 50  # mots du vocabulaire envoyés au modèle fichier (réglage mots_max)
     _client = None
     _pool = None
 
@@ -101,10 +102,9 @@ class Moteur:
     def mots_fichier(self) -> list[str]:
         # 50 au plus, comme en direct. Wispr Flow en envoie 200 ; mesuré le 21/10 sur 40 dictées avec ce
         # modèle : 50, 100 et 200 mots donnent le même écart (10,9 / 11,1 / 11,2 %) et les mêmes noms
-        # retrouvés, et au-delà de 100 Scribe facture 20 s minimum par dictée.
-        from .precis import MAX_MOTS
-
-        return _mots_bloc(self.mots)[:MAX_MOTS]
+        # retrouvés, et au-delà de 100 Scribe facture 20 s minimum par dictée. Le réglage mots_max permet
+        # d'essayer plus (200 : un prénom rare de plus retrouvé sur 40 dictées, aucun nom inventé de plus).
+        return _mots_bloc(self.mots, self.mots_max)
 
     def url_direct(self) -> str:
         p = [("model_id", "scribe_v2_realtime"), ("audio_format", "pcm_16000"), ("language_code", self.langue)]

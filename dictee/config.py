@@ -47,6 +47,9 @@ class Config:
     moteur: str = "precis"
     # Mots à reconnaître en priorité (noms, marques, jargon). 50 maximum envoyés au moteur en direct.
     mots: list[str] = field(default_factory=list)
+    # Mots de ta mémoire envoyés au moteur « precis » à chaque dictée (jusqu'à 1 000). 50 par défaut ;
+    # au-delà de 100, ElevenLabs compte 20 s minimum par dictée.
+    mots_max: int = 50
     # Remplacements après transcription : « ce qui est entendu » -> « ce qui est écrit ».
     remplacements: dict[str, str] = field(default_factory=dict)
     # Raccourcis de texte : dire la phrase colle le texte complet.

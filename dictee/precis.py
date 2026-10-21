@@ -124,8 +124,9 @@ class SessionPrecise:
         """Des noms lus à l'écran (ecran.py) : en tête de la liste, pour les morceaux pas encore partis."""
         from .moteur import _mots_bloc
 
+        n = getattr(self.m, "mots_max", MAX_MOTS)
         with self._verrou:
-            self.mots = _mots_bloc(list(mots) + self.mots)[:MAX_MOTS]
+            self.mots = _mots_bloc(list(mots) + self.mots, n)
 
     def pousser(self, morceau: bytes) -> None:
         with self._verrou:

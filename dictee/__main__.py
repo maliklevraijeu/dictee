@@ -29,8 +29,11 @@ def essai(chemin: str) -> None:
 
     cfg = Config.charger()
     mem = Memoire()
-    m = Moteur(cfg.cle_api(), cfg.langue, mem.mots_prioritaires(100) or cfg.mots, cfg.reecriture, cfg.decoupe,
+    # mêmes réglages que l'appli : moteur et nombre de mots
+    n = max(1, min(int(cfg.mots_max or 50), 1000))
+    m = Moteur(cfg.cle_api(), cfg.langue, mem.mots_prioritaires(max(100, n)) or cfg.mots, cfg.reecriture, cfg.decoupe,
                cfg.langues_secondaires)
+    m.mode, m.mots_max = cfg.moteur, n
     m.cle_gemini = cfg.cle_gemini()
     with wave.open(chemin) as w:
         if (w.getframerate(), w.getnchannels(), w.getsampwidth()) != (16000, 1, 2):

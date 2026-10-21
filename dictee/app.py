@@ -95,6 +95,7 @@ class App:
                              cfg.langues_secondaires)
         self.moteur.cle_gemini = cle_gemini
         self.moteur.mode = cfg.moteur
+        self.moteur.mots_max = max(1, min(int(cfg.mots_max or 50), 1000))
         self.micro = Micro(cfg.micro, cfg.micro_pret)
         self._traine = None  # dictée relâchée dont le micro écoute encore un instant
         self.file: queue.Queue = queue.Queue()
@@ -172,7 +173,7 @@ class App:
         self.appli = historique.appli_active()
         # les mots qui comptent le plus en ce moment (la mémoire les reclasse à chaque dictée)
         self.memoire.synchroniser()
-        self.moteur.mots = self.memoire.mots_prioritaires(100)
+        self.moteur.mots = self.memoire.mots_prioritaires(max(100, self.moteur.mots_max))
         self.session = self.moteur.nouvelle_session()
         try:
             self.micro.demarrer(self.session.pousser)
