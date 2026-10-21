@@ -8,6 +8,8 @@ import re
 import unicodedata
 
 _EUH = r"(?:euh+|heu+|hum+|hm+|mmh+|bah\s+euh)"
+# en anglais : « um », « uh », « erm »... (« er » seul n'est jamais un vrai mot anglais)
+_EUH_EN = r"(?:u+h+|u+m+|uhm+|e+r+m+|e+r+|h+m+|m+h+m+)"
 
 
 def _motif(phrase: str) -> re.Pattern:
@@ -32,8 +34,9 @@ def appliquer_remplacements(texte: str, remplacements: dict[str, str]) -> str:
     return texte
 
 
-def retirer_hesitations(texte: str) -> str:
+def retirer_hesitations(texte: str, langue: str = "fr") -> str:
     t = texte
+    _EUH = globals()["_EUH"] if langue.startswith("fr") else f"(?:{globals()['_EUH']}|{_EUH_EN})"
     debut_retire = re.match(rf"(?i)\s*(?:{_EUH}\b|[\w'’-]+--)", t) is not None
     # faux départ marqué par le moteur : « j'aimerais-- j'aurais aimé » -> « j'aurais aimé »
     t = re.sub(r"[\w'’-]+--(?=\s|$)\s*", "", t)
@@ -53,7 +56,9 @@ def retirer_hesitations(texte: str) -> str:
 
 # Doublons voulus qu'on ne touche jamais : « nous nous sommes », « très très », « non non »...
 _DOUBLES_VOULUS = {"nous", "vous", "très", "non", "oui", "si", "bon", "allez", "vite", "fort", "beaucoup",
-                   "trop", "plus", "encore", "jamais", "toujours", "là", "ah", "oh", "hey", "ok", "bien"}
+                   "trop", "plus", "encore", "jamais", "toujours", "là", "ah", "oh", "hey", "ok", "bien",
+                   # anglais : « very very », « no no », « had had », « that that », « is is »
+                   "very", "no", "yes", "really", "bye", "ha", "go", "had", "that", "is", "so", "well", "now"}
 
 
 def retirer_begaiements(texte: str) -> str:
@@ -76,11 +81,16 @@ def retirer_begaiements(texte: str) -> str:
     return t
 
 
-def typographie(texte: str) -> str:
+def typographie(texte: str, langue: str = "fr") -> str:
     t = unicodedata.normalize("NFC", texte)
     t = re.sub(r"\s*--\s*", " ", t)
     t = re.sub(r"[ \t]+", " ", t)
     t = re.sub(r"\s+([,.…)])", lambda m: m.group(1), t)
+    if not langue.startswith("fr"):
+        # anglais : jamais d'espace avant ? ! ; :
+        t = re.sub(r"[ \t  ]+([?!;:])", lambda m: m.group(1), t)
+        t = re.sub(r"([?!;])(?=[^\s?!.,)\"’'/\d])", lambda m: m.group(1) + " ", t)
+        return re.sub(r"\s+\n", "\n", t).strip()
     # Français : une espace avant ? ! ; (« Tu vois ? »)
     t = re.sub(r"(?<=[\w»”\"')])\s*([?!;])", lambda m: " " + m.group(1), t)
     t = re.sub(r"(?<=[^\s\d:/])\s*:(?=\s|$)", " :", t)
@@ -90,9 +100,9 @@ def typographie(texte: str) -> str:
 
 
 def nettoyer(texte: str, remplacements: dict[str, str] | None = None, snippets: dict[str, str] | None = None,
-             hesitations: bool = True) -> str:
-    t = retirer_begaiements(retirer_hesitations(texte)) if hesitations else texte
-    t = typographie(t)
+             hesitations: bool = True, langue: str = "fr") -> str:
+    t = retirer_begaiements(retirer_hesitations(texte, langue)) if hesitations else texte
+    t = typographie(t, langue)
     if snippets:
         t = appliquer_snippets(t, snippets)
     if remplacements:

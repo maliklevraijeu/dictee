@@ -62,7 +62,7 @@ def main() -> None:
             s.pousser(pcm[i:i + 1600])
             time.sleep(0.05)
         r = s.terminer()
-        texte = nettoyer(r.texte, {**cfg.remplacements, **Memoire().remplacements()}, cfg.snippets)
+        texte = nettoyer(r.texte, {**cfg.remplacements, **Memoire().remplacements()}, cfg.snippets, langue=cfg.langue)
         return {"f": x["f"], "duree": x["duree"], "latence_wispr_ms": x["latence_wispr_ms"], "latence_ms": r.latence_ms,
                 "voie": r.voie, "ecart_vs_wispr": round(ecart(texte, x["wispr"]), 3), "texte": texte, "wispr": x["wispr"],
                 "erreur": r.erreur}

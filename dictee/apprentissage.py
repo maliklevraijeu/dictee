@@ -28,6 +28,11 @@ def _mots(t: str) -> list[str]:
     return _MOT.findall(t or "")
 
 
+def _commun(mot: str) -> bool:
+    """« Fais-moi » est aussi courant que « fais » et « moi » : un mot composé de mots courants l'est."""
+    return courant(mot) or all(courant(x) for x in re.split(r"[-'’]", mot) if x)
+
+
 _TERMINAISON = re.compile(r"(ées|és|ée|ait|ais|ai|ent|er|ez|es|e|s|x|é)$")
 
 
@@ -90,9 +95,9 @@ def corrections(colle: str, final: str) -> list[tuple[str, str]]:
         ecrit = " ".join(apres)
         if entendu == ecrit:
             continue
-        if SequenceMatcher(None, entendu.lower(), ecrit.lower()).ratio() < 0.5:
+        if SequenceMatcher(None, entendu.lower(), ecrit.lower()).ratio() <= 0.5:
             continue  # trop différent : une reformulation, pas une faute d'écoute
-        if all(courant(m) for m in apres) or any(c.isdigit() for c in ecrit) or "@" in ecrit or "/" in ecrit:
+        if all(_commun(m) for m in apres) or any(c.isdigit() for c in ecrit) or "@" in ecrit or "/" in ecrit:
             continue
         if _accord(entendu, ecrit):
             continue

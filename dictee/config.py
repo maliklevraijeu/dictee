@@ -21,8 +21,12 @@ class Config:
     mains_libres: str = "ctrl+win+space"
     # Recoller la dernière dictée (si le collage a raté ou pour la remettre ailleurs).
     recoller: str = "alt+shift+z"
+    # Langue de la dictée ("fr", "en"...) et autres langues que tu glisses parfois dedans. Au premier
+    # lancement, elles suivent la langue de Windows.
     langue: str = "fr"
     langues_secondaires: list[str] = field(default_factory=lambda: ["en"])
+    # Langue des fenêtres et des messages : "auto" (celle de Windows), "fr" ou "en".
+    interface: str = "auto"
     # Nom (ou morceau du nom) du micro à utiliser. Vide = micro par défaut de Windows au démarrage.
     # On ne suit PAS les changements du micro par défaut en cours de route : un écran branché en HDMI
     # peut devenir le micro par défaut de Windows plusieurs fois par jour.
@@ -64,6 +68,10 @@ class Config:
     def charger(cls) -> "Config":
         c = cls()
         if not FICHIER.exists():
+            from .langues import langue_systeme
+
+            if langue_systeme() == "en":  # premier lancement sur un Windows anglais : on dicte en anglais
+                c.langue, c.langues_secondaires = "en", []
             return c
         try:
             d = json.loads(FICHIER.read_text(encoding="utf-8"))

@@ -33,6 +33,11 @@ def test_rien_a_apprendre():
     assert corrections("une longue phrase dictée ici", "tout autre chose sans rapport") == []
 
 
+def test_reformulation_pas_apprise():
+    # « moi aussi » remplacé par « Fais-moi ça » : une reformulation, faite de mots courants
+    assert corrections("Tu peux faire moi aussi le point", "Tu peux faire Fais-moi ça le point") == []
+
+
 def test_grammaire_pas_apprise():
     # un accord ou un infinitif corrigé, ce n'est pas une faute d'écoute
     assert corrections("elle est petit et belle", "elle est petite et belle") == []

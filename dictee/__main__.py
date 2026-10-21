@@ -5,6 +5,10 @@
   python -m dictee micros             liste les micros
   python -m dictee importer-wispr     reprend le dictionnaire et les snippets de Wispr Flow
   python -m dictee demarrage on|off   lancer (ou non) Dictée à l'ouverture de Windows
+  python -m dictee ajouter "Mars Men" "Canva"      apprendre des noms (ou --fichier liste.txt)
+  python -m dictee corriger "Mark Smead" "Mars Men"  écrire toujours le 2e quand le moteur entend le 1er
+
+  English: same commands. "ajouter" = add words, "corriger" = always write B when the engine hears A.
 """
 from __future__ import annotations
 
@@ -38,7 +42,7 @@ def essai(chemin: str) -> None:
         time.sleep(0.05)
     r = s.terminer()
     print(f"[{r.voie}] {r.latence_ms} ms après la fin" + (f" ({r.erreur})" if r.erreur else ""))
-    print(nettoyer(r.texte, {**cfg.remplacements, **mem.remplacements()}, cfg.snippets, cfg.sans_hesitations))
+    print(nettoyer(r.texte, {**cfg.remplacements, **mem.remplacements()}, cfg.snippets, cfg.sans_hesitations, cfg.langue))
 
 
 def micros() -> None:
@@ -105,6 +109,30 @@ def demarrage(etat: str) -> None:
         print("Dictée se lancera au démarrage de Windows.")
 
 
+def ajouter(args: list[str]) -> None:
+    """Des noms d'un coup : ils partent au moteur dès la dictée suivante (même si Dictée tourne déjà)."""
+    from .fenetre_memoire import morceaux
+    from .memoire import Memoire
+
+    if args[0] == "--fichier" and len(args) > 1:
+        mots = morceaux(Path(args[1]).read_text(encoding="utf-8"))
+    else:
+        mots = [m for a in args for m in morceaux(a)]
+    mem = Memoire()
+    ajoutes = [m for m in mots if mem.ajouter_mot(m, "manuel")]
+    mem.enregistrer()
+    print(f"{len(ajoutes)} ajouté(s) / added: {', '.join(ajoutes) or '-'}")
+
+
+def corriger(entendu: str, ecrit: str) -> None:
+    from .memoire import Memoire
+
+    mem = Memoire()
+    if mem.ajouter_correction(entendu, ecrit):
+        mem.enregistrer()
+        print(f"« {entendu} » -> « {ecrit} »")
+
+
 def main() -> None:
     a = sys.argv[1:]
     if not a:
@@ -119,6 +147,10 @@ def main() -> None:
         importer_wispr()
     elif a[0] == "demarrage" and len(a) > 1:
         demarrage(a[1])
+    elif a[0] == "ajouter" and len(a) > 1:
+        ajouter(a[1:])
+    elif a[0] == "corriger" and len(a) == 3:
+        corriger(a[1], a[2])
     else:
         print(__doc__)
 

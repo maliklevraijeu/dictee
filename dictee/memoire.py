@@ -37,10 +37,25 @@ class Memoire:
         self.refuses: set[str] = set()  # mots retirés par l'utilisateur : jamais ré-appris tout seuls
         self.stats = {"dictees": 0, "mots_dictes": 0, "secondes": 0.0, "depuis": _maintenant()}
         self._verrou = threading.Lock()
+        self._date_fichier = 0.0  # date du fichier quand on l'a lu ou écrit pour la dernière fois
         self.charger()
 
     # --- fichier --------------------------------------------------------------
+    def _date(self) -> float:
+        try:
+            return self.fichier.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def synchroniser(self) -> None:
+        """Le fichier a changé ailleurs (fenêtre « Ta mémoire » d'un autre lancement, commande
+        `python -m dictee ajouter`, retouche à la main) : on le relit avant d'y toucher."""
+        if self._date() != self._date_fichier:
+            self.charger()
+
     def charger(self) -> None:
+        self.mots, self.corrections, self.refuses = {}, {}, set()
+        self._date_fichier = self._date()
         if not self.fichier.exists():
             return
         try:
@@ -81,6 +96,7 @@ class Memoire:
             tmp = self.fichier.with_suffix(".tmp")
             tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
             os.replace(tmp, self.fichier)  # écriture atomique : jamais de fichier à moitié écrit
+            self._date_fichier = self._date()
 
     # --- vocabulaire ------------------------------------------------------------
     def ajouter_mot(self, texte: str, source: str, poids: float = 0) -> bool:
@@ -163,6 +179,18 @@ class Memoire:
 
     def remplacements(self) -> dict[str, str]:
         return {c["entendu"]: c["ecrit"] for c in self.corrections.values() if c["fois"] >= SEUIL_REMPLACEMENT}
+
+    def ajouter_correction(self, entendu: str, ecrit: str) -> bool:
+        """Ajoutée à la main (« Mark Smead » -> « Mars Men ») : active tout de suite, et le bon mot entre
+        dans le vocabulaire pour que le moteur l'entende mieux la fois suivante."""
+        entendu, ecrit = re.sub(r"\s+", " ", entendu).strip(), re.sub(r"\s+", " ", ecrit).strip()
+        if not entendu or not ecrit or entendu.lower() == ecrit.lower():
+            return False
+        self.refuses.discard(ecrit.lower())
+        self.ajouter_mot(ecrit, "manuel")
+        self.corrections[entendu.lower()] = {"entendu": entendu, "ecrit": ecrit, "fois": SEUIL_REMPLACEMENT,
+                                             "derniere": _maintenant(), "source": "manuel"}
+        return True
 
     def oublier_correction(self, entendu: str) -> bool:
         return self.corrections.pop(entendu.lower(), None) is not None

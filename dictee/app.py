@@ -6,6 +6,7 @@ dans le principal.
 """
 from __future__ import annotations
 
+import collections
 import ctypes
 import os
 import queue
@@ -20,6 +21,8 @@ from .apprentissage import Veilleur
 from .audio import Micro, lister_micros
 from .coller import coller, copier_selection, mettre_texte, titre_fenetre_active
 from .config import DOSSIER, FICHIER, Config
+from .langues import choisir as choisir_langue
+from .langues import t
 from .memoire import Memoire
 from .moteur import Moteur, Resultat
 from .nettoyage import nettoyer
@@ -69,6 +72,7 @@ def _instance_unique() -> bool:
 class App:
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        choisir_langue(cfg.interface)
         _dpi()
         self.racine = tk.Tk()
         self.racine.withdraw()
@@ -99,7 +103,7 @@ class App:
             d = Config()
             self.racc = Raccourcis(d.raccourci, d.mains_libres, d.recoller, lambda e: self.file.put((e, None)),
                                    d.memoriser)
-            self.alerte = f"Raccourci invalide dans les réglages ({e}) : Ctrl+Win gardé"
+            self.alerte = t("raccourci_invalide", erreur=e)
         self.veilleur = Veilleur(lambda c, appli: self.file.put(("appris", c)))
         self.session = None
         self.debut = 0.0
@@ -114,6 +118,7 @@ class App:
         self.telephone = None  # le serveur de la page du téléphone, lancé à la demande
         self.fenetre_telephone = None
         self._pare_feu_en_cours = False
+        self.recentes: collections.deque[str] = collections.deque(maxlen=30)  # dernières dictées collées
 
     # --- boucle principale ----------------------------------------------
     def lancer(self) -> None:
@@ -162,6 +167,7 @@ class App:
         self.debut = time.time()
         self.appli = historique.appli_active()
         # les mots qui comptent le plus en ce moment (la mémoire les reclasse à chaque dictée)
+        self.memoire.synchroniser()
         self.moteur.mots = self.memoire.mots_prioritaires(100)
         self.session = self.moteur.nouvelle_session()
         try:
@@ -170,7 +176,7 @@ class App:
             self.session.annuler()
             self.session = None
             self.racc.reinitialiser()
-            self.pilule.message(f"Micro introuvable : {e}"[:60], 3000, erreur=True)
+            self.pilule.message(t("micro_introuvable", erreur=e)[:60], 3000, erreur=True)
             return
         if self.cfg.sons:
             sons.jouer(sons.DEBUT)
@@ -186,7 +192,7 @@ class App:
         self.micro.arreter()
         self.session.annuler()
         self.session = None
-        self.pilule.message("Dictée annulée", 1000)
+        self.pilule.message(t("annulee"), 1000)
 
     def _sur_fin(self, _):
         s = self.session
@@ -211,7 +217,7 @@ class App:
 
     def _finir(self, s, quand: float, appli: str, remplacements: dict[str, str], calme: bool = False) -> None:
         r: Resultat = s.terminer()
-        texte = nettoyer(r.texte, remplacements, self.cfg.snippets, self.cfg.sans_hesitations)
+        texte = nettoyer(r.texte, remplacements, self.cfg.snippets, self.cfg.sans_hesitations, self.cfg.langue)
         if _PONCTUATION_SEULE.match(texte) or (calme and _INVENTIONS.match(texte)):
             texte = ""
         colle, raison = False, ""
@@ -236,6 +242,8 @@ class App:
     def _sur_resultat(self, x):
         texte, colle, raison, r, duree, appli = x
         if texte:
+            self.recentes.append(texte)
+            self.memoire.synchroniser()
             self.memoire.noter_dictee(texte, duree)
             try:
                 self.memoire.enregistrer()
@@ -248,27 +256,27 @@ class App:
                 sons.jouer(sons.ERREUR)
             e = (r.erreur or "").lower()
             if any(k in e for k in ("401", "403", "invalid_api_key", "api key not valid", "unauthorized")):
-                quoi = "Clé refusée : change-la dans le menu de l'icône"
+                quoi = t("cle_refusee")
             elif any(k in e for k in ("402", "429", "quota", "insufficient", "credits")):
-                quoi = "Crédits ou quota épuisés chez le service de transcription"
+                quoi = t("quota")
             else:
-                quoi = "Réseau indisponible : dictée gardée dans l'historique"
+                quoi = t("reseau")
             self.pilule.message(quoi, 4000, erreur=True)
         elif not texte and self.dernier_muet:
             micro = self.dernier_remplacant or self.micro.nom_actif()
-            self.pilule.message(f"Micro muet ({micro[:28]}) : change-le dans l'icône Dictée", 4000, erreur=True)
+            self.pilule.message(t("micro_muet", micro=micro[:28]), 4000, erreur=True)
         elif not texte:
-            self.pilule.message("Rien entendu", 1200)
+            self.pilule.message(t("rien_entendu"), 1200)
         elif not colle and raison == "test":
-            self.pilule.message("Test : collage retenu", 1500)
+            self.pilule.message(t("test"), 1500)
         elif not colle:
             mettre_texte(texte, discret=False)
             if raison == "admin":
-                self.pilule.message("Fenêtre administrateur : colle avec Ctrl+V", 3000)
+                self.pilule.message(t("admin"), 3000)
             else:
-                self.pilule.message("Copié : fais Ctrl+V", 2500)
+                self.pilule.message(t("copie"), 2500)
         elif self.dernier_remplacant:
-            self.pilule.message(f"Micro choisi absent, pris : {self.dernier_remplacant[:30]}", 2500)
+            self.pilule.message(t("micro_remplace", micro=self.dernier_remplacant[:30]), 2500)
         else:
             self.pilule.cacher()
 
@@ -278,8 +286,13 @@ class App:
 
     # --- mémoire ---------------------------------------------------------------
     def _sur_appris(self, corrections):
+        self.memoire.synchroniser()
         nouveaux = []
         for entendu, ecrit in corrections:
+            # Le « bon » texte vient d'une autre dictée (on a redicté par-dessus) : ce n'est pas une
+            # correction tapée à la main, le moteur a juste entendu autre chose une 2e fois.
+            if any(ecrit in d for d in self.recentes):
+                continue
             if self.memoire.apprendre_correction(entendu, ecrit):
                 nouveaux.append(ecrit)
         if nouveaux:
@@ -288,7 +301,7 @@ class App:
             except OSError:
                 pass
             if self.session is None:
-                self.pilule.message("Appris : " + ", ".join(nouveaux)[:48], 2200)
+                self.pilule.message(t("appris", mots=", ".join(nouveaux)[:48]), 2200)
 
     def _sur_memoriser(self, _):
         def faire():
@@ -299,14 +312,14 @@ class App:
     def _sur_selection(self, sel: str):
         sel = re.sub(r"\s+", " ", sel or "").strip()
         if not sel:
-            self.pilule.message("Sélectionne d'abord un mot", 1800)
+            self.pilule.message(t("selection_vide"), 1800)
         elif len(sel) > 50 or len(sel.split()) > 5:
-            self.pilule.message("Sélection trop longue : un nom ou quelques mots", 2200)
-        elif self.memoire.ajouter_mot(sel, "selection"):
+            self.pilule.message(t("selection_longue"), 2200)
+        elif self.memoire.synchroniser() or self.memoire.ajouter_mot(sel, "selection"):
             self.memoire.enregistrer()
-            self.pilule.message(f"Retenu : {sel}"[:52], 2000)
+            self.pilule.message(t("retenu", mot=sel)[:52], 2000)
         else:
-            self.pilule.message(f"Déjà connu : {sel}"[:52], 1800)
+            self.pilule.message(t("deja_connu", mot=sel)[:52], 1800)
 
     def _sur_ouvrir_memoire(self, _):
         from .fenetre_memoire import ouvrir
@@ -321,7 +334,7 @@ class App:
 
         if demander_cles(self.racine):
             self.moteur.cle, self.moteur.cle_gemini = self.cfg.cle_api(), self.cfg.cle_gemini()
-            self.pilule.message("Clés enregistrées", 1500)
+            self.pilule.message(t("cles_ok"), 1500)
 
     # --- téléphone ------------------------------------------------------------------
     def _relancer_telephone(self) -> None:
@@ -365,7 +378,7 @@ class App:
             fait.set()
             return
         remplacements = {**self.cfg.remplacements, **self.memoire.remplacements()}
-        propre = nettoyer(texte, remplacements, self.cfg.snippets, self.cfg.sans_hesitations)
+        propre = nettoyer(texte, remplacements, self.cfg.snippets, self.cfg.sans_hesitations, self.cfg.langue)
         if _PONCTUATION_SEULE.match(propre):
             reponse.update(ok=False, raison="vide")
             fait.set()
@@ -389,6 +402,7 @@ class App:
     def _sur_telephone_colle(self, x):
         propre, colle, raison, appli = x
         self.derniere = propre
+        self.memoire.synchroniser()
         self.memoire.noter_dictee(propre, 0)
         try:
             self.memoire.enregistrer()
@@ -397,9 +411,9 @@ class App:
         if colle and self.cfg.apprendre:
             self.veilleur.surveiller(propre, appli)
         elif raison == "admin":
-            self.pilule.message("Fenêtre administrateur : colle avec Ctrl+V", 3000)
+            self.pilule.message(t("admin"), 3000)
         elif not colle:
-            self.pilule.message("Reçu du téléphone : fais Ctrl+V", 2500)
+            self.pilule.message(t("recu_telephone"), 2500)
 
     def _sur_ouvrir_telephone(self, _):
         if self.fenetre_telephone is not None and self.fenetre_telephone.winfo_exists():
@@ -418,7 +432,7 @@ class App:
                 # Sans la règle, Windows bloque le téléphone sur un réseau « public » (le réglage par
                 # défaut de beaucoup de box). On n'écoute jamais avant : pas d'alerte du pare-feu dont
                 # le « Annuler » bloquerait Dictée pour de bon.
-                self.file.put(("message", "Réponds « Oui » à Windows pour ouvrir ton Wi-Fi à Dictée"))
+                self.file.put(("message", t("pare_feu_oui")))
                 if telephone.demander_pare_feu():
                     fin = time.time() + 30
                     while time.time() < fin and not pret:
@@ -436,10 +450,10 @@ class App:
 
         self._pare_feu_en_cours = False
         if not pret:
-            self.pilule.message("Sans l'accord de Windows, le téléphone ne peut pas joindre le PC", 4000, erreur=True)
+            self.pilule.message(t("pare_feu_non"), 4000, erreur=True)
             return
         if not self._lancer_telephone():
-            self.pilule.message("Impossible d'ouvrir la dictée par téléphone", 3000, erreur=True)
+            self.pilule.message(t("telephone_impossible"), 3000, erreur=True)
             return
         if not self.cfg.telephone:
             self.cfg.telephone = True
@@ -503,20 +517,21 @@ class App:
                 _journal_erreur("démarrage")
 
         menu = pystray.Menu(
-            pystray.MenuItem(lambda _i: f"Dictée : {'en pause' if self.pause else 'prête'} ({self.cfg.raccourci})", None, enabled=False),
-            pystray.MenuItem("Ta mémoire", envoyer("ouvrir_memoire"), default=True),
-            pystray.MenuItem("Dicter depuis le téléphone", envoyer("ouvrir_telephone"),
+            pystray.MenuItem(lambda _i: t("etat", etat=t("en_pause") if self.pause else t("prete"), raccourci=self.cfg.raccourci),
+                             None, enabled=False),
+            pystray.MenuItem(t("menu_memoire"), envoyer("ouvrir_memoire"), default=True),
+            pystray.MenuItem(t("menu_telephone"), envoyer("ouvrir_telephone"),
                              checked=lambda _i: self.telephone is not None and self.telephone.actif),
-            pystray.MenuItem("Pause", lambda *_: setattr(self, "pause", not self.pause), checked=lambda _i: self.pause),
-            pystray.MenuItem("Recoller la dernière dictée", envoyer("recoller")),
-            pystray.MenuItem("Micro", pystray.Menu(
-                pystray.MenuItem("Celui de Windows", choisir(""), checked=lambda _i: not self.cfg.micro, radio=True),
+            pystray.MenuItem(t("menu_pause"), lambda *_: setattr(self, "pause", not self.pause), checked=lambda _i: self.pause),
+            pystray.MenuItem(t("menu_recoller"), envoyer("recoller")),
+            pystray.MenuItem(t("menu_micro"), pystray.Menu(
+                pystray.MenuItem(t("micro_windows"), choisir(""), checked=lambda _i: not self.cfg.micro, radio=True),
                 *[pystray.MenuItem(m[:60], choisir(m), checked=lambda _i, m=m: self.cfg.micro == m, radio=True) for m in uniques[:12]],
             )),
-            pystray.MenuItem("Lancer avec Windows", basculer_demarrage, checked=lambda _i: demarrage.actif()),
-            pystray.MenuItem("Changer de clé", envoyer("changer_cles")),
-            pystray.MenuItem("Réglages", lambda *_: (self.cfg.enregistrer() if not FICHIER.exists() else None, _ouvrir(FICHIER))),
-            pystray.MenuItem("Quitter", envoyer("quitter")),
+            pystray.MenuItem(t("menu_demarrage"), basculer_demarrage, checked=lambda _i: demarrage.actif()),
+            pystray.MenuItem(t("menu_cles"), envoyer("changer_cles")),
+            pystray.MenuItem(t("menu_reglages"), lambda *_: (self.cfg.enregistrer() if not FICHIER.exists() else None, _ouvrir(FICHIER))),
+            pystray.MenuItem(t("menu_quitter"), envoyer("quitter")),
         )
         self.icone = pystray.Icon("dictee", im, "Dictée", menu)
         self.icone.run_detached()
@@ -540,5 +555,5 @@ def principal() -> None:
     except Exception:
         # Sous pythonw, un plantage au démarrage serait invisible : on le dit, et on le garde.
         _journal_erreur("démarrage de Dictée")
-        ctypes.windll.user32.MessageBoxW(None, f"Dictée n'a pas pu démarrer. Détail dans :\n{DOSSIER / 'erreurs.log'}",
+        ctypes.windll.user32.MessageBoxW(None, t("demarrage_rate", chemin=DOSSIER / "erreurs.log"),
                                          "Dictée", 0x10)

@@ -237,30 +237,41 @@ class Serveur:
 
             def do_GET(self):
                 if urlparse(self.path).path != "/" or not self._autorise():
-                    return self._repondre(403, "Lien périmé : rescanne le QR code sur le PC.".encode(),
+                    return self._repondre(403, "Lien périmé : rescanne le QR code sur le PC. / Link expired: scan the QR code again.".encode(),
                                           "text/plain; charset=utf-8")
                 self._repondre(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
 
             def do_POST(self):
-                if urlparse(self.path).path != "/envoyer" or not self._autorise():
-                    return self._json(403, {"ok": False, "raison": "jeton"})
+                # Le corps est toujours lu (borné) AVANT de répondre, même pour refuser : un serveur qui
+                # répond et ferme pendant que le téléphone envoie encore lui coupe la connexion.
                 try:
                     n = int(self.headers.get("Content-Length") or 0)
                 except ValueError:
                     n = 0
-                if n <= 0 or n > MAX_CARACTERES * 4 + 200:
+                trop_gros = n <= 0 or n > MAX_CARACTERES * 4 + 200
+                corps, reste = b"", min(max(n, 0), 256 * 1024)
+                while reste > 0:
+                    bloc = self.rfile.read(min(reste, 65536))
+                    if not bloc:
+                        break
+                    corps += bloc
+                    reste -= len(bloc)
+                if urlparse(self.path).path != "/envoyer" or not self._autorise():
+                    return self._json(403, {"ok": False, "raison": "jeton"})
+                if trop_gros:
+                    self.close_connection = True
                     return self._json(413, {"ok": False, "raison": "taille"})
                 if not serveur._cadence():
                     return self._json(429, {"ok": False, "raison": "cadence"})
                 try:
-                    texte = json.loads(self.rfile.read(n).decode("utf-8")).get("texte", "")
+                    texte = json.loads(corps.decode("utf-8")).get("texte", "")
                 except (ValueError, UnicodeDecodeError, AttributeError):
                     return self._json(400, {"ok": False, "raison": "format"})
                 if not isinstance(texte, str) or not texte.strip():
                     return self._json(400, {"ok": False, "raison": "vide"})
+                if len(texte.strip()) > MAX_CARACTERES:  # jamais tronqué en silence
+                    return self._json(413, {"ok": False, "raison": "taille"})
                 try:
-                    if len(texte.strip()) > MAX_CARACTERES:  # jamais tronqué en silence
-                        return self._json(413, {"ok": False, "raison": "taille"})
                     reponse = serveur.recevoir(texte.strip())
                 except Exception:
                     reponse = {"ok": False, "raison": "erreur"}
@@ -325,9 +336,27 @@ PAGE = """<!doctype html>
   <p id="etat" aria-live="polite"></p>
 </main>
 <script>
+  // Français si le téléphone est en français, anglais sinon.
+  const FR = (navigator.language || "fr").toLowerCase().startsWith("fr");
+  const T = FR ? {
+    parle: "Touche le micro du clavier et parle.", envoyer: "Envoyer au PC", envoi: "Envoi…",
+    perime: "Lien périmé : rescanne le QR code sur le PC.", long: "Texte trop long : envoie-le en plusieurs fois.",
+    vite: "Doucement : réessaie dans une seconde.", colle: "Collé sur le PC.", copie: "Copié sur le PC : fais Ctrl+V.",
+    pause: "Dictée est en pause sur le PC.", vide: "Rien à envoyer.", rate: "Pas collé. Réessaie.",
+    injoignable: "Le PC ne répond pas. Tu es sur le même Wi-Fi ?"
+  } : {
+    parle: "Tap the keyboard's microphone and speak.", envoyer: "Send to PC", envoi: "Sending…",
+    perime: "Link expired: scan the QR code on the PC again.", long: "Text too long: send it in several parts.",
+    vite: "Slow down: try again in a second.", colle: "Pasted on the PC.", copie: "Copied on the PC: press Ctrl+V.",
+    pause: "Dictée is paused on the PC.", vide: "Nothing to send.", rate: "Not pasted. Try again.",
+    injoignable: "The PC isn't answering. Are you on the same Wi-Fi?"
+  };
+  document.documentElement.lang = FR ? "fr" : "en";
   const zone = document.getElementById("texte");
   const bouton = document.getElementById("envoyer");
   const etat = document.getElementById("etat");
+  zone.placeholder = T.parle;
+  bouton.textContent = T.envoyer;
   function dire(t, erreur) { etat.textContent = t; etat.className = erreur ? "erreur" : ""; }
   // Sur iPhone, le clavier recouvre la page sans la rétrécir : on cale la page sur la partie visible,
   // pour que « Envoyer au PC » reste juste au-dessus du clavier.
@@ -351,24 +380,24 @@ PAGE = """<!doctype html>
     zone.blur();
     const texte = zone.value.trim();
     zone.focus();
-    if (!texte) { dire("Touche le micro du clavier et parle."); return; }
+    if (!texte) { dire(T.parle); return; }
     bouton.disabled = true;
-    dire("Envoi…");
+    dire(T.envoi);
     try {
       const r = await fetch("/envoyer" + location.search, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texte })
       });
       const d = await r.json().catch(() => ({}));
-      if (r.status === 403) dire("Lien périmé : rescanne le QR code sur le PC.", true);
-      else if (r.status === 413) dire("Texte trop long : envoie-le en plusieurs fois.", true);
-      else if (r.status === 429) dire("Doucement : réessaie dans une seconde.", true);
-      else if (d.ok && d.colle) { zone.value = ""; dire("Collé sur le PC."); }
-      else if (d.ok) { zone.value = ""; dire("Copié sur le PC : fais Ctrl+V."); }
-      else if (d.raison === "pause") dire("Dictée est en pause sur le PC.", true);
-      else if (d.raison === "vide") dire("Rien à envoyer.", true);
-      else dire("Pas collé. Réessaie.", true);
+      if (r.status === 403) dire(T.perime, true);
+      else if (r.status === 413) dire(T.long, true);
+      else if (r.status === 429) dire(T.vite, true);
+      else if (d.ok && d.colle) { zone.value = ""; dire(T.colle); }
+      else if (d.ok) { zone.value = ""; dire(T.copie); }
+      else if (d.raison === "pause") dire(T.pause, true);
+      else if (d.raison === "vide") dire(T.vide, true);
+      else dire(T.rate, true);
     } catch (e) {
-      dire("Le PC ne répond pas. Tu es sur le même Wi-Fi ?", true);
+      dire(T.injoignable, true);
     }
     bouton.disabled = false;
   });

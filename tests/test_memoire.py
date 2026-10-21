@@ -54,6 +54,20 @@ m.apprendre_correction("la tour et fêle", "La Tour Eiffel")
 assert "la tour eiffel" not in m.mots
 assert m.ajouter_mot("La Tour Eiffel", "manuel")  # remis à la main : accepté
 
+# une correction ajoutée à la main est active tout de suite, et le bon mot entre au vocabulaire
+assert m.ajouter_correction("Mark Smead", "Mars Men")
+assert m.remplacements()["Mark Smead"] == "Mars Men" and "mars men" in m.mots
+
+# un autre lancement (ou la commande `ajouter`) écrit le fichier : on le relit avant d'y toucher
+m.enregistrer()
+autre = Memoire(m.fichier)
+autre.ajouter_mot("Huel", "manuel")
+autre.enregistrer()
+import os, time  # noqa: E401,E402
+os.utime(m.fichier, (time.time() + 5, time.time() + 5))  # date différente même si tout va très vite
+m.synchroniser()
+assert "huel" in m.mots
+
 # le fichier se relit à l'identique
 m.enregistrer()
 r = Memoire(m.fichier)
