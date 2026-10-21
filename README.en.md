@@ -11,7 +11,7 @@ I used Wispr Flow, a dictation app I paid for, all day long, and I didn't want t
 You need Windows 10 or 11 and an internet connection. Press the Windows key, type "PowerShell", open it, then paste this line with a right click and press Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.5.0/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.5.1/installer.ps1 | iex
 ```
 
 The script installs Python for your account if it is missing, without admin rights, then installs Dictée in your user folder and starts it with Windows. You can read [installer.ps1](installer.ps1) before running it. If the script says it can't install Python, install it from python.org first, ticking "Add python.exe to PATH", then run the line again.

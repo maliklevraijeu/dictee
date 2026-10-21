@@ -36,27 +36,45 @@ def _rms(pcm: bytes) -> float:
 
 
 class ClientScribe:
-    """Une connexion HTTPS gardée ouverte par fil : on ne repaie pas la poignée de main TLS (100 à 200 ms)
-    à chaque morceau."""
+    """Des connexions HTTPS gardées ouvertes et partagées entre les fils : on ne repaie pas la poignée de
+    main TLS (100 à 200 ms) à chaque dictée, et celle ouverte à l'appui est celle qui sert.
 
-    def __init__(self, cle: str):
+    Une connexion restée inactive peut être morte sans le dire : le 21/10 à 20h38, après 24 min sans
+    dicter, le réseau l'avait coupée en silence et une dictée de 6 s a mis 20,7 s (Windows réessaie ~20 s
+    avant d'abandonner). Au-delà de INACTIF_MAX on en ouvre une neuve, pendant que tu parles, et le 1er essai
+    d'une requête a un délai court : s'il ne répond pas, on repart aussitôt sur une connexion neuve."""
+
+    INACTIF_MAX = 20.0  # secondes
+
+    def __init__(self, cle: str, fabrique=None):
         self.cle = cle
-        self._local = threading.local()
+        self._fabrique = fabrique or (lambda: http.client.HTTPSConnection("api.elevenlabs.io", timeout=60))
+        self._libres: list[tuple[http.client.HTTPConnection, float]] = []  # (connexion, dernier usage)
+        self._verrou = threading.Lock()
 
-    def _connexion(self) -> http.client.HTTPSConnection:
-        c = getattr(self._local, "c", None)
-        if c is None:
-            c = http.client.HTTPSConnection("api.elevenlabs.io", timeout=60)
-            self._local.c = c
-        return c
+    def _prendre(self) -> http.client.HTTPConnection:
+        """La connexion libre la plus récente si elle a servi il y a peu ; sinon une neuve."""
+        with self._verrou:
+            while self._libres:
+                c, quand = self._libres.pop()
+                if c.sock is not None and time.monotonic() - quand < self.INACTIF_MAX:
+                    return c
+                c.close()
+        return self._fabrique()
+
+    def _rendre(self, c: http.client.HTTPConnection) -> None:
+        with self._verrou:
+            self._libres.append((c, time.monotonic()))
 
     def chauffer(self) -> None:
+        c = self._prendre()
         try:
-            c = self._connexion()
             if c.sock is None:
                 c.connect()
         except OSError:
-            self._local.c = None
+            c.close()
+            return
+        self._rendre(c)
 
     def transcrire(self, pcm: bytes, langue: str, mots: list[str]) -> str:
         b = uuid.uuid4().hex
@@ -66,20 +84,28 @@ class ClientScribe:
         corps += (f"--{b}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.pcm\"\r\n"
                   "Content-Type: application/octet-stream\r\n\r\n").encode() + pcm + f"\r\n--{b}--\r\n".encode()
         entetes = {"xi-api-key": self.cle, "Content-Type": f"multipart/form-data; boundary={b}"}
-        for essai in range(2):  # une connexion fermée par le serveur pendant l'attente : on en rouvre une
-            c = self._connexion()
+        # 1er essai : délai court, à la mesure de l'audio (Scribe rend 45 s d'audio en ~1,5 s) ; 2e essai, sur
+        # une connexion neuve, avec le délai long
+        delais = (4.0 + 0.3 * len(pcm) / OCTETS_PAR_MS / 1000, 60.0)
+        for essai, delai in enumerate(delais):
+            c = self._prendre() if essai == 0 else self._fabrique()
             try:
+                c.timeout = delai
+                if c.sock is not None:
+                    c.sock.settimeout(delai)
                 c.request("POST", "/v1/speech-to-text", body=corps, headers=entetes)
                 r = c.getresponse()
                 brut = r.read()
-                if r.status >= 400:
-                    raise RuntimeError(f"HTTP {r.status} {brut[:200]!r}")
-                return json.loads(brut).get("text", "").strip()
             except (http.client.HTTPException, OSError):
-                c.close()
-                self._local.c = None
+                c.close()  # connexion morte, coupée ou muette : on repart sur une neuve
                 if essai:
                     raise
+                continue
+            if r.status >= 400:
+                c.close()
+                raise RuntimeError(f"HTTP {r.status} {brut[:200]!r}")
+            self._rendre(c)
+            return json.loads(brut).get("text", "").strip()
         return ""
 
 
