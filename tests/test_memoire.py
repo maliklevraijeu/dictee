@@ -26,6 +26,12 @@ assert m.mots_prioritaires(1) == ["TikTok"], m.mots_prioritaires(3)
 assert m.mots["tiktok"]["utilisations"] == 3
 assert m.stats["dictees"] == 3
 
+# un mot ajouté à la main passe devant tout un dictionnaire importé : il est envoyé au moteur tout de suite
+gros = nouvelle()
+gros.reprendre([f"Mot{i}x" for i in range(300)], {})
+gros.ajouter_mot("La Tour Eiffel", "manuel")
+assert "La Tour Eiffel" in gros.mots_prioritaires(5)
+
 # les mots courants ne deviennent jamais du vocabulaire
 assert not m.ajouter_mot("dans", "correction")
 assert m.ajouter_mot("Zorglub", "correction")

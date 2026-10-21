@@ -117,7 +117,7 @@ class Memoire:
         # main ou appris d'une correction gardent une avance.
         age = (_maintenant() - (m.get("derniere") or m.get("ajoute") or 0)) / 86400
         fraicheur = math.exp(-age / DEMI_VIE_JOURS)
-        bonus = {"manuel": 3, "selection": 3, "correction": 4}.get(m.get("source", ""), 0)
+        bonus = {"manuel": 8, "selection": 8, "correction": 8}.get(m.get("source", ""), 0)
         return m.get("utilisations", 0) + m.get("poids", 0) + 10 * fraicheur + bonus
 
     def mots_prioritaires(self, n: int) -> list[str]:
@@ -172,7 +172,7 @@ class Memoire:
         n = 0
         for i, m in enumerate(mots):
             # l'ordre d'origine (les plus utilisés d'abord) devient une avance de départ
-            if self.ajouter_mot(m, "import", poids=max(0, len(mots) - i) // 10):
+            if self.ajouter_mot(m, "import", poids=round(3 * (len(mots) - i) / len(mots), 2)):
                 n += 1
         for entendu, ecrit in remplacements.items():
             self.corrections.setdefault(entendu.lower(), {"entendu": entendu, "ecrit": ecrit,

@@ -9,7 +9,7 @@ J'utilisais Wispr Flow, une appli de dictée payante, toute la journée, et je n
 Il faut Windows 10 ou 11 et une connexion internet. Appuie sur la touche Windows, tape « PowerShell », ouvre-le, puis colle cette ligne avec un clic droit et appuie sur Entrée :
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.1.0/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.1.1/installer.ps1 | iex
 ```
 
 Le script installe Python pour ton compte s'il manque, sans droits administrateur, puis Dictée dans ton dossier utilisateur, et il la lance avec Windows. Tu peux lire [installer.ps1](installer.ps1) avant de le lancer. Si ton Windows n'a pas winget, installe d'abord Python depuis python.org en cochant « Add python.exe to PATH », puis relance la ligne.
