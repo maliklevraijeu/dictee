@@ -31,6 +31,9 @@ class Config:
     # On ne suit PAS les changements du micro par défaut en cours de route : un écran branché en HDMI
     # peut devenir le micro par défaut de Windows plusieurs fois par jour.
     micro: str = ""
+    # Garder le micro prêt entre les dictées pour ne jamais couper le premier mot (voir audio.py). Rien
+    # n'est envoyé ni enregistré hors d'une dictée ; le voyant micro de Windows reste allumé.
+    micro_pret: bool = True
     # Retirer les « euh » et les faux départs (« j'aimerais-- j'aurais aimé »), rien d'autre.
     sans_hesitations: bool = True
     # Laisser le moteur réécrire en français « propre » (« c'est pas » -> « ce n'est pas »). Non par
@@ -39,6 +42,9 @@ class Config:
     # "manuel" : la dictée est validée d'un seul tenant au relâchement (le plus fiable) ; "vad" : chaque
     # phrase est validée à la pause.
     decoupe: str = "manuel"
+    # Le moteur : "precis" (le modèle fichier d'ElevenLabs, découpé aux pauses : le plus juste, environ
+    # 0,6 s après le relâchement) ou "rapide" (le direct : 0,2 s, mais plus de mots mal entendus).
+    moteur: str = "precis"
     # Mots à reconnaître en priorité (noms, marques, jargon). 50 maximum envoyés au moteur en direct.
     mots: list[str] = field(default_factory=list)
     # Remplacements après transcription : « ce qui est entendu » -> « ce qui est écrit ».

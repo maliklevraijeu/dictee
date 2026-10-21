@@ -30,6 +30,7 @@ from .pilule import Pilule
 from .raccourci import Raccourcis
 
 DUREE_MIN = 0.3  # un appui plus court est un faux départ : on l'ignore
+TRAINE_MS = 300  # le micro écoute encore ce temps après le relâchement, pour la dernière syllabe
 
 # Phrases que les moteurs inventent parfois sur un silence. Écartées seulement quand c'est TOUT le
 # texte ET que le micro n'a presque rien capté : une vraie dictée « Merci de votre attention. » passe.
@@ -93,7 +94,9 @@ class App:
         self.moteur = Moteur(cle, cfg.langue, self.memoire.mots_prioritaires(100), cfg.reecriture, cfg.decoupe,
                              cfg.langues_secondaires)
         self.moteur.cle_gemini = cle_gemini
-        self.micro = Micro(cfg.micro)
+        self.moteur.mode = cfg.moteur
+        self.micro = Micro(cfg.micro, cfg.micro_pret)
+        self._traine = None  # dictée relâchée dont le micro écoute encore un instant
         self.file: queue.Queue = queue.Queue()
         self.alerte = ""
         try:
@@ -129,6 +132,7 @@ class App:
         if not auto:
             self.racc.lancer()
             self._icone()
+            threading.Thread(target=self.micro.preparer, daemon=True).start()
             if self.cfg.telephone:
                 threading.Thread(target=self._relancer_telephone, daemon=True).start()
         self.racine.after(15, self._depiler)
@@ -189,6 +193,7 @@ class App:
     def _sur_annuler(self, _):
         if self.session is None:
             return
+        self._traine = None
         self.micro.arreter()
         self.session.annuler()
         self.session = None
@@ -196,19 +201,30 @@ class App:
 
     def _sur_fin(self, _):
         s = self.session
-        if s is None:
+        if s is None or self._traine is s:
+            return
+        if time.time() - self.debut < DUREE_MIN:
+            # Appui bref sur le raccourci, sans parler : si un mot est sélectionné, Dictée le retient.
+            # Sans sélection, rien ne se passe (c'était un faux départ).
+            self.session = None
+            self.micro.arreter()
+            s.annuler()
+            self.pilule.cacher()
+            self._sur_memoriser("appui bref")
+            return
+        # On relâche souvent la touche en prononçant encore la dernière syllabe : le micro continue un
+        # court instant (mesuré le 21/10 : des dictées finissaient sur un mot coupé, « On en est- »).
+        self._traine = s
+        self.racine.after(TRAINE_MS, lambda: self._fin_apres_traine(s))
+
+    def _fin_apres_traine(self, s):
+        self._traine = None
+        if self.session is not s:  # annulée (Échap) pendant la traîne
             return
         self.session = None
         self.micro.arreter()
         self.dernier_muet = self.micro.muet()
         self.dernier_remplacant = self.micro.remplacant
-        if time.time() - self.debut < DUREE_MIN:
-            # Appui bref sur le raccourci, sans parler : si un mot est sélectionné, Dictée le retient.
-            # Sans sélection, rien ne se passe (c'était un faux départ).
-            s.annuler()
-            self.pilule.cacher()
-            self._sur_memoriser("appui bref")
-            return
         if self.cfg.sons:
             sons.jouer(sons.FIN)
         self.pilule.transcription()
@@ -478,7 +494,7 @@ class App:
         if self.telephone is not None:
             self.telephone.arreter()
         self.racc.arreter()
-        self.micro.arreter()
+        self.micro.fermer()
         try:
             self.memoire.enregistrer()
         except OSError:
@@ -511,6 +527,8 @@ class App:
             def faire(*_):
                 self.cfg.micro = nom
                 self.micro.nom = nom
+                self.micro.fermer()
+                self.micro.preparer()
                 Config.modifier(micro=nom)
             return faire
 

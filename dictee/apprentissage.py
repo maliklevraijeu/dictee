@@ -101,6 +101,10 @@ def corrections(colle: str, final: str) -> list[tuple[str, str]]:
             continue
         if _accord(entendu, ecrit):
             continue
+        # une ou deux lettres tapées par accident devant ou derrière (« Parle-toi » -> « wParle-toi ») :
+        # une faute de frappe, pas un mot à apprendre
+        if 0 < len(ecrit) - len(entendu) <= 2 and (ecrit.endswith(entendu) or ecrit.startswith(entendu)):
+            continue
         sortie.append((entendu, ecrit))
     return sortie
 

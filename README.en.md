@@ -4,14 +4,14 @@
 
 Hold Ctrl+Win, speak, release, and your text is pasted wherever you are typing, in any Windows app.
 
-I used Wispr Flow, a paid dictation app, all day long, and I didn't want to keep paying a monthly subscription for a tool I can run myself. Dictée sends your voice while you speak, so when you let go of the keys there is almost nothing left to transcribe, and the text arrives about a quarter of a second later, with ElevenLabs, on 40 of my own dictations.
+I used Wispr Flow, a paid dictation app, all day long, and I didn't want to keep paying a monthly subscription for a tool I can run myself. Dictée transcribes with ElevenLabs' most accurate model, and a long dictation is sent in pieces while you speak. On 40 of my own dictations, the text arrives about 0.6 seconds after a short dictation and 1 second after a long one.
 
 ## Install
 
 You need Windows 10 or 11 and an internet connection. Press the Windows key, type "PowerShell", open it, then paste this line with a right click and press Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.3.1/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.4.0/installer.ps1 | iex
 ```
 
 The script installs Python for your account if it is missing, without admin rights, then installs Dictée in your user folder and starts it with Windows. You can read [installer.ps1](installer.ps1) before running it. If the script says it can't install Python, install it from python.org first, ticking "Add python.exe to PATH", then run the line again.
@@ -22,7 +22,7 @@ The windows and messages follow the language of Windows. On an English Windows y
 
 Dictée asks for a key, the code a transcription service gives you when you create an account. To try it for free, go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey), sign in with your Google account, create a key and paste it into Dictée.
 
-The Gemini key is free, and the text arrives in 1 to 2 seconds in my tests. An [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) key gives you the quarter of a second, and you can add both, in which case Gemini takes over when ElevenLabs doesn't answer. Your keys stay encrypted on your PC, and you change them from the menu of the icon next to the clock.
+The Gemini key is free, and the text arrives in 1 to 2 seconds in my tests. An [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) key is faster and more accurate, and you can add both, in which case Gemini takes over when ElevenLabs doesn't answer. Your keys stay encrypted on your PC, and you change them from the menu of the icon next to the clock.
 
 ## Shortcuts
 
@@ -56,11 +56,13 @@ It keeps your sentences the way you said them. It removes the "um" and the false
 
 Your voice goes to ElevenLabs for the transcription, and to Google only if you added just a Gemini key or if ElevenLabs doesn't answer. What these services keep depends on their terms: on the free Gemini tier, Google may use it to improve its products, except in the European Union, Switzerland and the United Kingdom ([Gemini API terms](https://ai.google.dev/gemini-api/terms)). When you dictate from your phone, its keyboard handles your voice, so Apple or Google depending on the phone and its settings.
 
+The microphone stays ready in the background so your first word is never cut: it keeps the last half second in memory, nothing is sent or recorded outside a dictation, and the Windows microphone indicator therefore stays on. You can turn this off with `"micro_pret": false` in the settings, and a Bluetooth headset is never kept open anyway.
+
 Everything else stays on your PC, in `%APPDATA%\Dictee`. The history keeps the text of your last 5,000 dictations, with the app name and the window title, and audio is only kept when a dictation failed, for 7 days, so you can redo it. The keyboard shortcut only watches its own keys and records nothing you type, and what it reads after a dictation is only used to find your fixes: you can check it in [raccourci.py](dictee/raccourci.py) and [apprentissage.py](dictee/apprentissage.py).
 
 ## What it costs
 
-Dictée is free, and only the transcription may cost something. Gemini has a free tier with usage limits. At ElevenLabs, an hour of speech costs less than 50 cents, and their free plan covers about 2 hours of dictation a month ([their pricing](https://elevenlabs.io/pricing/api)).
+Dictée is free, and only the transcription may cost something. Gemini has a free tier with usage limits. At ElevenLabs, an hour of speech costs about 30 cents, and their free plan covers about 4 hours of dictation a month ([their pricing](https://elevenlabs.io/pricing/api)).
 
 ## If something goes wrong
 
@@ -76,9 +78,11 @@ Quit Dictée from the icon menu, unticking "Start with Windows" just before. The
 
 ## How I measured
 
-I took 40 of my real dictations, from a few seconds to 3 and a half minutes. The same code as the app replays them at speaking speed and times the gap between the end of speech and the final text, and Dictée takes 0.23 seconds at the median, with ElevenLabs.
+I took 40 of my real dictations, from a few seconds to 3 and a half minutes. The same code as the app replays them at speaking speed and times the gap between the end of speech and the final text: about 0.6 seconds for a dictation under 8 seconds, 0.9 seconds up to 15 seconds, and 1.1 to 1.4 seconds beyond.
 
-Wispr Flow records its own delay for each dictation in its history, on the PC (the `e2eLatency` field of its local database), and for these 40 dictations its median is 0.59 seconds. The two clocks may not start at exactly the same moment, so read the gap as an order of magnitude, measured on one PC and one connection. To time Dictée on your own 16 kHz mono WAV recordings, there is `python -m dictee essai file.wav`.
+I also compared the words. Dictée's first engine, live streaming, differed from Wispr's text on 11% of the words, and I could read meaning errors in it. The current engine differs on only 7% of the words, and most of these gaps are plain variants ("t'en" or "tu en"). The live engine is still available with `"moteur": "rapide"` in the settings, for 0.2 seconds.
+
+Wispr Flow records its own delay for each dictation in its history, on the PC (the `e2eLatency` field of its local database), and for these 40 dictations its median is 0.59 seconds, from 0.4 seconds on short dictations to 1 second on long ones. The two clocks may not start at exactly the same moment, so read the gap as an order of magnitude, measured on one PC and one connection. To time Dictée on your own 16 kHz mono WAV recordings, there is `python -m dictee essai file.wav`.
 
 Wispr Flow is a trademark of its owners, and Dictée has no link with them. I only name it because it is the tool Dictée replaces for me.
 

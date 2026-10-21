@@ -33,6 +33,11 @@ def test_rien_a_apprendre():
     assert corrections("une longue phrase dictée ici", "tout autre chose sans rapport") == []
 
 
+def test_faute_de_frappe_pas_apprise():
+    # une lettre tapée par accident devant le mot dicté
+    assert corrections("Parle-toi, il est en nuage", "wParle-toi, il est en nuage") == []
+
+
 def test_reformulation_pas_apprise():
     # « moi aussi » remplacé par « Fais-moi ça » : une reformulation, faite de mots courants
     assert corrections("Tu peux faire moi aussi le point", "Tu peux faire Fais-moi ça le point") == []

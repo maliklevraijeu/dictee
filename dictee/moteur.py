@@ -81,8 +81,27 @@ class Moteur:
         self._fil = threading.Thread(target=self.boucle.run_forever, name="moteur", daemon=True)
         self._fil.start()
 
-    def nouvelle_session(self) -> "Session":
+    # "precis" : modèle fichier découpé aux pauses (precis.py, le plus juste) ; "rapide" : le direct.
+    mode: str = "precis"
+    _client = None
+    _pool = None
+
+    def nouvelle_session(self):
+        if self.mode == "precis":
+            from .precis import ClientScribe, SessionPrecise
+
+            if self._client is None or self._client.cle != self.cle:
+                from concurrent.futures import ThreadPoolExecutor
+
+                self._client = ClientScribe(self.cle)
+                self._pool = self._pool or ThreadPoolExecutor(4, thread_name_prefix="scribe")
+            return SessionPrecise(self, self._client, self._pool)
         return Session(self)
+
+    def mots_fichier(self) -> list[str]:
+        # 50 au plus, comme en direct : une liste trop longue fait entendre des noms qui n'ont pas été dits
+        # (mesuré le 21/10 : « semaine dernière » devenu « Smile It's Sunnah » avec 100 mots)
+        return _mots_bloc(self.mots)[:50]
 
     def url_direct(self) -> str:
         p = [("model_id", "scribe_v2_realtime"), ("audio_format", "pcm_16000"), ("language_code", self.langue)]
