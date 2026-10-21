@@ -4,3 +4,4 @@ numpy>=1.26
 pystray>=0.19
 pillow>=10
 comtypes>=1.4
+segno>=1.5

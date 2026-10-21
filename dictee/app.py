@@ -111,6 +111,9 @@ class App:
         self.pilule = Pilule(self.racine, lambda: self.micro.niveau)
         self.icone = None
         self.fenetre_memoire = None
+        self.telephone = None  # le serveur de la page du téléphone, lancé à la demande
+        self.fenetre_telephone = None
+        self._pare_feu_en_cours = False
 
     # --- boucle principale ----------------------------------------------
     def lancer(self) -> None:
@@ -121,6 +124,8 @@ class App:
         if not auto:
             self.racc.lancer()
             self._icone()
+            if self.cfg.telephone:
+                threading.Thread(target=self._relancer_telephone, daemon=True).start()
         self.racine.after(15, self._depiler)
         if self.alerte:
             self.racine.after(800, lambda: self.pilule.message(self.alerte[:70], 6000, erreur=True))
@@ -318,7 +323,142 @@ class App:
             self.moteur.cle, self.moteur.cle_gemini = self.cfg.cle_api(), self.cfg.cle_gemini()
             self.pilule.message("Clés enregistrées", 1500)
 
+    # --- téléphone ------------------------------------------------------------------
+    def _relancer_telephone(self) -> None:
+        from . import telephone
+
+        # allumé à la dernière session : on ne réécoute que si le pare-feu est toujours d'accord
+        if telephone.regle_presente():
+            self.file.put(("lancer_telephone", None))
+
+    def _sur_lancer_telephone(self, _):
+        self._lancer_telephone()
+
+    def _lancer_telephone(self) -> bool:
+        from .telephone import Serveur
+
+        if self.telephone is None:
+            self.telephone = Serveur(self._du_telephone)
+        try:
+            self.telephone.lancer()
+            return True
+        except OSError:
+            _journal_erreur("serveur du téléphone")
+            return False
+
+    def _du_telephone(self, texte: str) -> dict:
+        """Appelé dans le fil du serveur : on passe par la file, et on attend le collage pour répondre."""
+        reponse, fait = {}, threading.Event()
+        self.file.put(("telephone", (texte, reponse, fait)))
+        if not fait.wait(10):
+            # Trop tard : le téléphone dira « réessaie », donc ce texte-là ne doit plus être collé.
+            reponse["abandon"] = True
+            return {"ok": False, "raison": "occupe"}
+        return reponse
+
+    def _sur_telephone(self, x):
+        texte, reponse, fait = x
+        if reponse.get("abandon"):
+            return
+        if self.pause:
+            reponse.update(ok=False, raison="pause")
+            fait.set()
+            return
+        remplacements = {**self.cfg.remplacements, **self.memoire.remplacements()}
+        propre = nettoyer(texte, remplacements, self.cfg.snippets, self.cfg.sans_hesitations)
+        if _PONCTUATION_SEULE.match(propre):
+            reponse.update(ok=False, raison="vide")
+            fait.set()
+            return
+        appli, fenetre = historique.appli_active(), titre_fenetre_active()
+
+        def faire():
+            if reponse.get("abandon"):
+                return
+            colle, raison = coller(propre + " ")
+            copie = not colle and raison != "test" and mettre_texte(propre, discret=False)
+            reponse.update(ok=bool(colle or copie), colle=colle, raison=raison)
+            fait.set()
+            historique.ajouter({"quand": time.strftime("%Y-%m-%d %H:%M:%S"), "texte": propre, "brut": texte,
+                                "duree_s": 0, "latence_ms": 0, "voie": "telephone", "appli": appli, "fenetre": fenetre,
+                                "colle": colle, "raison": raison, "erreur": "", "audio": ""})
+            self.file.put(("telephone_colle", (propre, colle, raison, appli)))
+
+        threading.Thread(target=faire, daemon=True).start()
+
+    def _sur_telephone_colle(self, x):
+        propre, colle, raison, appli = x
+        self.derniere = propre
+        self.memoire.noter_dictee(propre, 0)
+        try:
+            self.memoire.enregistrer()
+        except OSError:
+            pass
+        if colle and self.cfg.apprendre:
+            self.veilleur.surveiller(propre, appli)
+        elif raison == "admin":
+            self.pilule.message("Fenêtre administrateur : colle avec Ctrl+V", 3000)
+        elif not colle:
+            self.pilule.message("Reçu du téléphone : fais Ctrl+V", 2500)
+
+    def _sur_ouvrir_telephone(self, _):
+        if self.fenetre_telephone is not None and self.fenetre_telephone.winfo_exists():
+            self.fenetre_telephone.lift()
+            return
+        if self._pare_feu_en_cours:
+            return
+        self._pare_feu_en_cours = True
+
+        def preparer():
+            # Hors du fil de l'interface : netsh et la demande de Windows peuvent prendre du temps.
+            from . import telephone
+
+            pret = telephone.regle_presente()
+            if not pret:
+                # Sans la règle, Windows bloque le téléphone sur un réseau « public » (le réglage par
+                # défaut de beaucoup de box). On n'écoute jamais avant : pas d'alerte du pare-feu dont
+                # le « Annuler » bloquerait Dictée pour de bon.
+                self.file.put(("message", "Réponds « Oui » à Windows pour ouvrir ton Wi-Fi à Dictée"))
+                if telephone.demander_pare_feu():
+                    fin = time.time() + 30
+                    while time.time() < fin and not pret:
+                        time.sleep(0.7)
+                        pret = telephone.regle_presente()
+            self.file.put(("montrer_telephone", pret))
+
+        threading.Thread(target=preparer, daemon=True).start()
+
+    def _sur_message(self, texte: str):
+        self.pilule.message(texte, 4000)
+
+    def _sur_montrer_telephone(self, pret: bool):
+        from .fenetre_telephone import ouvrir
+
+        self._pare_feu_en_cours = False
+        if not pret:
+            self.pilule.message("Sans l'accord de Windows, le téléphone ne peut pas joindre le PC", 4000, erreur=True)
+            return
+        if not self._lancer_telephone():
+            self.pilule.message("Impossible d'ouvrir la dictée par téléphone", 3000, erreur=True)
+            return
+        if not self.cfg.telephone:
+            self.cfg.telephone = True
+            Config.modifier(telephone=True)
+        self.fenetre_telephone = ouvrir(self.racine, self.telephone.adresse(), self._couper_telephone)
+
+    def _couper_telephone(self):
+        from . import telephone
+
+        if self.telephone is not None:
+            self.telephone.arreter()
+        self.telephone = None
+        telephone.oublier_jeton()  # le QR code déjà scanné ne marchera plus
+        self.cfg.telephone = False
+        Config.modifier(telephone=False)
+
     def _sur_quitter(self, _):
+        if self.telephone is not None:
+            self.telephone.arreter()
         self.racc.arreter()
         self.micro.arreter()
         try:
@@ -365,6 +505,8 @@ class App:
         menu = pystray.Menu(
             pystray.MenuItem(lambda _i: f"Dictée : {'en pause' if self.pause else 'prête'} ({self.cfg.raccourci})", None, enabled=False),
             pystray.MenuItem("Ta mémoire", envoyer("ouvrir_memoire"), default=True),
+            pystray.MenuItem("Dicter depuis le téléphone", envoyer("ouvrir_telephone"),
+                             checked=lambda _i: self.telephone is not None and self.telephone.actif),
             pystray.MenuItem("Pause", lambda *_: setattr(self, "pause", not self.pause), checked=lambda _i: self.pause),
             pystray.MenuItem("Recoller la dernière dictée", envoyer("recoller")),
             pystray.MenuItem("Micro", pystray.Menu(

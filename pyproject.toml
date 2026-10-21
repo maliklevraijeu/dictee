@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dictee"
-version = "0.1.1"
+version = "0.2.0"
 description = "Dictée vocale pour Windows : maintiens Ctrl+Win, parle, relâche, le texte se colle là où tu écris."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -16,6 +16,7 @@ dependencies = [
     "pystray>=0.19",
     "pillow>=10",
     "comtypes>=1.4",
+    "segno>=1.5",
 ]
 classifiers = [
     "Operating System :: Microsoft :: Windows",

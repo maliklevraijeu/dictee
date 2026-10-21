@@ -1,11 +1,11 @@
 # Installe Dictee pour l'utilisateur courant, sans droits administrateur.
-#   irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.1.1/installer.ps1 | iex
+#   irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.2.0/installer.ps1 | iex
 # Ou, depuis un dossier telecharge :  powershell -ExecutionPolicy Bypass -File installer.ps1 [-Dossier D:\Dictee] [-SansDemarrage]
 # (Fichier volontairement en ASCII : PowerShell 5.1 lit mal l'UTF-8 sans BOM. Les accents sont construits avec [char].)
 param(
     [string]$Dossier = (Join-Path $env:LOCALAPPDATA 'Dictee'),
     [switch]$SansDemarrage,
-    [string]$Source = 'https://github.com/maliklevraijeu/dictee/archive/refs/tags/v0.1.1.zip'
+    [string]$Source = 'https://github.com/maliklevraijeu/dictee/archive/refs/tags/v0.2.0.zip'
 )
 $ErrorActionPreference = 'Stop'
 $e = [char]0xE9; $o = [char]0xF4; $a = [char]0xE2; $g = [char]0xE8

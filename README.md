@@ -9,7 +9,7 @@ J'utilisais Wispr Flow, une appli de dictée payante, toute la journée, et je n
 Il faut Windows 10 ou 11 et une connexion internet. Appuie sur la touche Windows, tape « PowerShell », ouvre-le, puis colle cette ligne avec un clic droit et appuie sur Entrée :
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.1.1/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.2.0/installer.ps1 | iex
 ```
 
 Le script installe Python pour ton compte s'il manque, sans droits administrateur, puis Dictée dans ton dossier utilisateur, et il la lance avec Windows. Tu peux lire [installer.ps1](installer.ps1) avant de le lancer. Si ton Windows n'a pas winget, installe d'abord Python depuis python.org en cochant « Add python.exe to PATH », puis relance la ligne.
@@ -29,6 +29,14 @@ La clé Gemini est gratuite, et le texte arrive en 1 à 2 secondes. La clé [Ele
 | Échap | Annuler la dictée en cours |
 | Alt+Maj+Z | Recoller la dernière dictée |
 | Alt+Maj+M | Retenir le mot que tu as sélectionné |
+
+## Sans micro sur ton PC
+
+Des écouteurs avec micro, en jack ou en Bluetooth (AirPods compris), marchent tels quels : tu les choisis dans le menu « Micro » de l'icône de Dictée, près de l'horloge (sous la flèche ^ si tu ne la vois pas). Si tu n'en as pas, ton téléphone fait l'affaire, sans rien installer dessus.
+
+Dans le même menu, « Dicter depuis le téléphone » affiche un QR code, que tu scannes avec l'appareil photo. Clique sur le PC là où tu veux écrire, puis, sur le téléphone, touche la zone de texte, le micro du clavier, parle, et touche « Envoyer au PC ». C'est ton téléphone qui transcrit, gratuitement, et Dictée repasse ensuite sur le texte avec les corrections qu'elle a apprises. Si le micro n'apparaît pas sur le clavier de l'iPhone, va dans Réglages, Général, Clavier, et active la dictée.
+
+Il faut que ton PC et ton téléphone soient sur le même Wi-Fi. La première fois, Windows demande si Dictée peut modifier l'appareil : réponds « Oui », c'est ce qui ouvre ton PC aux seuls appareils de ton Wi-Fi. Le texte ne passe jamais par internet, et le code secret du QR code empêche les autres appareils d'écrire sur ton PC.
 
 ## Elle apprend tes mots
 
@@ -58,7 +66,7 @@ C'est un projet personnel, partagé tel quel et sans garantie, sous licence MIT.
 
 ## Désinstaller
 
-Quitte Dictée depuis le menu de l'icône et décoche « Lancer avec Windows » juste avant. Supprime ensuite le dossier `%LOCALAPPDATA%\Dictee` et le raccourci « Dictée » du menu Démarrer, et supprime aussi `%APPDATA%\Dictee` si tu veux effacer ton historique, ta mémoire et tes clés.
+Quitte Dictée depuis le menu de l'icône et décoche « Lancer avec Windows » juste avant. Supprime ensuite le dossier `%LOCALAPPDATA%\Dictee` et le raccourci « Dictée » du menu Démarrer, et supprime aussi `%APPDATA%\Dictee` si tu veux effacer ton historique, ta mémoire et tes clés. Si tu as dicté depuis le téléphone, la règle « Dictee - dicter depuis le telephone » reste dans le pare-feu de Windows, et tu peux la supprimer dans ses règles de trafic entrant.
 
 ## Comment j'ai mesuré
 
@@ -84,4 +92,4 @@ Les tests `test_nettoyage`, `test_raccourci`, `test_apprentissage` et `test_memo
 
 Dictée is push-to-talk dictation for Windows. Hold Ctrl+Win, speak, release, and the text is pasted where your cursor is. It streams your voice to ElevenLabs while you speak, so the text is ready about a quarter of a second after you let go, as measured on 40 of my own dictations on one PC. With a free Gemini key instead, expect 1 to 2 seconds.
 
-It learns names and jargon from the corrections you make right after a dictation, and you can review everything it learned. The interface is in French, and French is the default dictation language. Change `langue` in `%APPDATA%\Dictee\config.json` to dictate in another language. Install it with the PowerShell line above. It is released under the MIT license.
+It learns names and jargon from the corrections you make right after a dictation, and you can review everything it learned. No microphone on your PC? Any headset works, or pick "Dicter depuis le téléphone" in the tray menu, scan the QR code and dictate with your phone's keyboard: the text is pasted on your PC, over your local Wi-Fi only. The interface is in French, and French is the default dictation language. Change `langue` in `%APPDATA%\Dictee\config.json` to dictate in another language. Install it with the PowerShell line above. It is released under the MIT license.

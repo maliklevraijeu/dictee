@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import re
 import threading
 import time
 from ctypes import wintypes
@@ -187,12 +188,16 @@ def coller(texte: str) -> tuple[bool, str]:
             # Alt, Maj ou Win toujours tenues (par exemple la dictée suivante déjà commencée) : on ne
             # colle pas à l'aveugle, l'appli le mettra dans le presse-papiers.
             return False, "touches tenues"
+        terminal = _classe(h) in _TERMINAUX
+        if terminal:
+            # Dans un terminal, un retour à la ligne exécute la ligne : on n'en colle jamais.
+            texte = re.sub(r"\s*[\r\n]+\s*", " ", texte)
         ancien = _sauver()
         if not mettre_texte(texte):
             _journal("presse-papiers indisponible")
             return False, "presse-papiers"
         ctrl_tenu = bool(u32.GetAsyncKeyState(0x11) & 0x8000)
-        if _classe(h) in _TERMINAUX and not ctrl_tenu:
+        if terminal and not ctrl_tenu:
             # Les terminaux collent tous avec Maj+Inser (Ctrl+V n'y marche pas toujours).
             n = envoyer_touches((0xA0, True), (0x2D, True), (0x2D, False), (0xA0, False))
         elif ctrl_tenu:

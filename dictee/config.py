@@ -45,6 +45,8 @@ class Config:
     memoriser: str = "alt+shift+m"
     # Apprendre des corrections que tu fais juste après un collage (voir apprentissage.py).
     apprendre: bool = True
+    # Dicter depuis le téléphone (page sur le Wi-Fi local, voir telephone.py). Allumé depuis l'icône.
+    telephone: bool = False
     sons: bool = True
     # Durée maximale d'une dictée, en secondes.
     duree_max: int = 600
