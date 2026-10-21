@@ -203,8 +203,11 @@ class App:
         self.dernier_muet = self.micro.muet()
         self.dernier_remplacant = self.micro.remplacant
         if time.time() - self.debut < DUREE_MIN:
+            # Appui bref sur le raccourci, sans parler : si un mot est sélectionné, Dictée le retient.
+            # Sans sélection, rien ne se passe (c'était un faux départ).
             s.annuler()
             self.pilule.cacher()
+            self._sur_memoriser("appui bref")
             return
         if self.cfg.sons:
             sons.jouer(sons.FIN)
@@ -303,10 +306,11 @@ class App:
             if self.session is None:
                 self.pilule.message(t("appris", mots=", ".join(nouveaux)[:48]), 2200)
 
-    def _sur_memoriser(self, _):
+    def _sur_memoriser(self, origine):
         def faire():
             sel = copier_selection()
-            self.file.put(("selection", sel))
+            if sel or origine != "appui bref":  # un appui bref sans sélection reste silencieux
+                self.file.put(("selection", sel))
         threading.Thread(target=faire, daemon=True).start()
 
     def _sur_selection(self, sel: str):

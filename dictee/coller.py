@@ -219,9 +219,19 @@ def copier_selection() -> str:
         return _copier_selection()
 
 
+def vraie_selection(copie: str) -> str:
+    """Ce que Ctrl+C a copié, seulement si c'est une vraie sélection. Sans sélection, VS Code (comme
+    Sublime) copie la ligne entière AVEC son retour à la ligne : ce n'est pas un mot choisi."""
+    if not copie or copie.endswith(("\n", "\r")) and copie.count("\n") <= 1:
+        return ""
+    return copie.strip()
+
+
 def _copier_selection() -> str:
     # Alt et Maj du raccourci encore tenues : Ctrl+C deviendrait Ctrl+Alt+Maj+C
     _relachees()
+    if _classe(u32.GetForegroundWindow()) in _TERMINAUX:
+        return ""  # Ctrl+C dans un terminal arrête le programme en cours : jamais
     ancien = _sauver()
     _mettre([])
     envoyer_touches((0xA2, True), (0x43, True), (0x43, False), (0xA2, False))
@@ -240,7 +250,7 @@ def _copier_selection() -> str:
         if texte:
             break
     _mettre(ancien) if ancien else _mettre([])
-    return texte.strip()
+    return vraie_selection(texte)
 
 
 def _journal(ligne: str) -> None:

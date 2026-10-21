@@ -27,4 +27,5 @@ jobs:
           python tests/test_memoire.py
           python tests/test_telephone.py
           python tests/test_langues.py
+          python tests/test_coller.py
           python -c "import dictee.app, dictee.fenetre_memoire, dictee.fenetre_telephone, dictee.accueil, dictee.coffre"

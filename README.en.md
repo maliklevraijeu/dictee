@@ -11,7 +11,7 @@ I used Wispr Flow, a paid dictation app, all day long, and I didn't want to keep
 You need Windows 10 or 11 and an internet connection. Press the Windows key, type "PowerShell", open it, then paste this line with a right click and press Enter:
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.3.0/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.3.1/installer.ps1 | iex
 ```
 
 The script installs Python for your account if it is missing, without admin rights, then installs Dictée in your user folder and starts it with Windows. You can read [installer.ps1](installer.ps1) before running it. If the script says it can't install Python, install it from python.org first, ticking "Add python.exe to PATH", then run the line again.
@@ -32,7 +32,7 @@ The Gemini key is free, and the text arrives in 1 to 2 seconds in my tests. An [
 | Ctrl+Win+Space | Hands-free, press Ctrl+Win again to finish |
 | Esc | Cancel the current dictation |
 | Alt+Shift+Z | Paste the last dictation again |
-| Alt+Shift+M | Remember the word you selected |
+| Quick tap on Ctrl+Win, with a word selected | Remember that word (a brand, a name) |
 
 ## No microphone on your PC
 

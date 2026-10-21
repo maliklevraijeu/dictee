@@ -11,7 +11,7 @@ J'utilisais Wispr Flow, une appli de dictée payante, toute la journée, et je n
 Il faut Windows 10 ou 11 et une connexion internet. Appuie sur la touche Windows, tape « PowerShell », ouvre-le, puis colle cette ligne avec un clic droit et appuie sur Entrée :
 
 ```powershell
-irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.3.0/installer.ps1 | iex
+irm https://raw.githubusercontent.com/maliklevraijeu/dictee/v0.3.1/installer.ps1 | iex
 ```
 
 Le script installe Python pour ton compte s'il manque, sans droits administrateur, puis Dictée dans ton dossier utilisateur, et il la lance avec Windows. Tu peux lire [installer.ps1](installer.ps1) avant de le lancer. Si le script dit qu'il n'arrive pas à installer Python, installe-le d'abord depuis python.org en cochant « Add python.exe to PATH », puis relance la ligne.
@@ -30,7 +30,7 @@ La clé Gemini est gratuite, et le texte arrive en 1 à 2 secondes dans mes essa
 | Ctrl+Win+Espace | Mains libres, Ctrl+Win une 2e fois pour finir |
 | Échap | Annuler la dictée en cours |
 | Alt+Maj+Z | Recoller la dernière dictée |
-| Alt+Maj+M | Retenir le mot que tu as sélectionné |
+| Appui bref sur Ctrl+Win, un mot sélectionné | Retenir ce mot (une marque, un nom) |
 
 ## Sans micro sur ton PC
 
